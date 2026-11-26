@@ -132,7 +132,7 @@ async function AbaGeral({ e }: { e: Equip }) {
 
 function AbaCaracteristicas({ e }: { e: Equip }) {
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-gray-500">
@@ -186,7 +186,7 @@ function AbaCaracteristicas({ e }: { e: Equip }) {
 function AbaModelos({ e }: { e: Equip }) {
   const destaque = e.definicoes.slice(0, 3);
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
       <Card className="overflow-hidden" role="region" aria-label="Modelos">
         {e.modelos.length === 0 ? (
           <p className="px-6 py-12 text-center text-sm text-gray-500">Nenhum modelo cadastrado.</p>

@@ -98,8 +98,8 @@ export function FormEquipamento({
   }, [estado, limparAoSalvar]);
   const e = estado.erros ?? {};
   return (
-    <form ref={ref} onSubmit={onSubmit} className="flex flex-col gap-4">
-      <div className="grid gap-4 sm:grid-cols-[11.25rem_1fr]">
+    <form ref={ref} onSubmit={onSubmit} className="@container flex flex-col gap-4">
+      <div className="grid gap-4 @lg:grid-cols-[11.25rem_1fr]">
         <Campo rotulo="Código" erro={e.codigo} ajuda="Único. Ex.: EXAUSTOR">
           <Input
             name="codigo"
@@ -118,7 +118,7 @@ export function FormEquipamento({
           />
         </Campo>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 @lg:grid-cols-2">
         <Campo rotulo="Categoria" erro={e.categoriaId}>
           <Select
             name="categoriaId"
@@ -185,7 +185,7 @@ export function FormNovaDefinicao({ acao }: { acao: AcaoDeFormulario }) {
     <form
       ref={ref}
       onSubmit={onSubmit}
-      className="flex flex-col gap-4"
+      className="@container flex flex-col gap-4"
       aria-label="Novo campo"
     >
       <Campo
@@ -195,7 +195,7 @@ export function FormNovaDefinicao({ acao }: { acao: AcaoDeFormulario }) {
       >
         <Input name="rotulo" required maxLength={60} />
       </Campo>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 @lg:grid-cols-2">
         <Campo rotulo="Tipo de dado" erro={e.tipoDado}>
           <Select
             name="tipoDado"
@@ -244,8 +244,8 @@ export function FormEdicaoDefinicao({
   const { estado, onSubmit, pendente } = useFormulario(acao);
   const e = estado.erros ?? {};
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-3">
-      <div className="grid gap-3 sm:grid-cols-[1fr_8.75rem]">
+    <form onSubmit={onSubmit} className="@container flex flex-col gap-3">
+      <div className="grid gap-3 @lg:grid-cols-[1fr_8.75rem]">
         <Campo rotulo="Nome do campo" erro={e.rotulo}>
           <Input
             name="rotulo"
@@ -318,10 +318,10 @@ export function FormNovoModelo({ acao }: { acao: AcaoDeFormulario }) {
   return (
     <form
       onSubmit={onSubmit}
-      className="flex flex-col gap-4"
+      className="@container flex flex-col gap-4"
       aria-label="Novo modelo"
     >
-      <div className="grid gap-4 sm:grid-cols-[10rem_1fr]">
+      <div className="grid gap-4 @lg:grid-cols-[10rem_1fr]">
         <Campo rotulo="Código do modelo" erro={e.codigo}>
           <Input name="codigo" required maxLength={40} className="uppercase" />
         </Campo>
@@ -445,9 +445,9 @@ export function FormModelo({
   const { estado, onSubmit, pendente } = useFormulario(acao);
   const e = estado.erros ?? {};
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-6">
+    <form onSubmit={onSubmit} className="@container flex flex-col gap-6">
       <section className="flex flex-col gap-4">
-        <div className="grid gap-4 sm:grid-cols-[10rem_1fr]">
+        <div className="grid gap-4 @lg:grid-cols-[10rem_1fr]">
           <Campo rotulo="Código do modelo" erro={e.codigo}>
             <Input
               name="codigo"
@@ -499,7 +499,7 @@ export function FormModelo({
             Cadastre-os na aba Características do equipamento.
           </p>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 @lg:grid-cols-2">
             {definicoes.map((d) => (
               <CampoDeAtributo
                 key={d.chave}
@@ -564,7 +564,7 @@ export function FormImagem({
         <form
           ref={ref}
           onSubmit={onSubmit}
-          className="flex flex-col gap-4"
+          className="@container flex flex-col gap-4"
           aria-label="Enviar imagem"
         >
           <Campo
