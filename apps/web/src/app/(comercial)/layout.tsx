@@ -6,7 +6,7 @@ export default async function LayoutComercial({ children }: LayoutProps<"/">) {
   return (
     <>
       <BarraSuperior usuario={usuario} />
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-10 sm:px-6">{children}</main>
+      <main className="mx-auto w-full max-w-[110rem] flex-1 px-4 py-10 sm:px-6">{children}</main>
     </>
   );
 }

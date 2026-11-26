@@ -55,7 +55,7 @@ export default async function PaginaCategorias() {
         titulo="Categorias e sistemas"
         descricao="Organize os sistemas que o vendedor verá no configurador. Inativas não aparecem para o vendedor."
       />
-      <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
+      <div className="grid gap-6 xl:grid-cols-[1fr_21rem]">
         <Card className="overflow-hidden" role="region" aria-label="Árvore de categorias">
           {arvore.length === 0 ? (
             <div className="flex flex-col items-center gap-2 px-6 py-16 text-center text-sm text-gray-500">

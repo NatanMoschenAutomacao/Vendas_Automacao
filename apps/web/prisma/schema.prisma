@@ -1,5 +1,6 @@
-// Schema da Fase 01: usuários, categorias, configurações e auditoria.
-// As entidades da biblioteca técnica entram nas fases seguintes, por migrations.
+// Fase 01: usuários, categorias, configurações e auditoria.
+// Fase 02: biblioteca de equipamentos (equipamentos, características, modelos e imagens).
+// As demais entidades entram nas fases seguintes, por migrations.
 
 generator client {
   provider = "prisma-client"
@@ -46,6 +47,8 @@ model Categoria {
   criadoEm     DateTime    @default(now())
   atualizadoEm DateTime    @updatedAt
 
+  equipamentos Equipamento[]
+
   @@index([paiId, ordem])
   @@map("categorias")
 }
@@ -71,4 +74,100 @@ model RegistroDeAuditoria {
 
   @@index([entidade, entidadeId])
   @@map("auditoria")
+}
+
+enum TipoDeEquipamento {
+  EQUIPAMENTO
+  SENSOR
+  ACESSORIO
+}
+
+enum TipoDeDado {
+  TEXTO
+  NUMERO
+  BOOLEANO
+  LISTA
+  MULTIPLA
+}
+
+model Equipamento {
+  id               String            @id @default(uuid()) @db.Uuid
+  codigo           String            @unique
+  nome             String
+  descricao        String?
+  tipo             TipoDeEquipamento @default(EQUIPAMENTO)
+  categoriaId      String            @db.Uuid
+  categoria        Categoria         @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+  imagemId         String?           @db.Uuid
+  imagem           Imagem?           @relation(fields: [imagemId], references: [id], onDelete: SetNull)
+  ordem            Int               @default(0)
+  ativo            Boolean           @default(true)
+  isDemo           Boolean           @default(false)
+  criadoEm         DateTime          @default(now())
+  atualizadoEm     DateTime          @updatedAt
+
+  definicoes DefinicaoDeAtributo[]
+  modelos    Modelo[]
+
+  @@index([categoriaId, ordem])
+  @@map("equipamentos")
+}
+
+/// Característica técnica que os modelos de um equipamento devem preencher.
+model DefinicaoDeAtributo {
+  id            String      @id @default(uuid()) @db.Uuid
+  equipamentoId String      @db.Uuid
+  equipamento   Equipamento @relation(fields: [equipamentoId], references: [id], onDelete: Cascade)
+  chave         String
+  rotulo        String
+  tipoDado      TipoDeDado
+  unidade       String?
+  opcoes        String[]
+  obrigatorio   Boolean     @default(false)
+  ordem         Int         @default(0)
+
+  @@unique([equipamentoId, chave])
+  @@index([equipamentoId, ordem])
+  @@map("definicoes_de_atributo")
+}
+
+model Modelo {
+  id            String      @id @default(uuid()) @db.Uuid
+  equipamentoId String      @db.Uuid
+  equipamento   Equipamento @relation(fields: [equipamentoId], references: [id], onDelete: Cascade)
+  codigo        String
+  nome          String
+  fabricante    String?
+  descricao     String?
+  /// Valores das características, por chave da definição.
+  atributos     Json        @default("{}")
+  imagemId      String?     @db.Uuid
+  imagem        Imagem?     @relation(fields: [imagemId], references: [id], onDelete: SetNull)
+  ordem         Int         @default(0)
+  ativo         Boolean     @default(true)
+  isDemo        Boolean     @default(false)
+  criadoEm      DateTime    @default(now())
+  atualizadoEm  DateTime    @updatedAt
+
+  @@unique([equipamentoId, codigo])
+  @@index([equipamentoId, ordem])
+  @@map("modelos")
+}
+
+model Imagem {
+  id                String   @id @default(uuid()) @db.Uuid
+  /// Caminho no armazenamento (local ou Supabase Storage).
+  chave             String   @unique
+  nomeArquivo       String
+  tipoMime          String
+  tamanho           Int
+  largura           Int?
+  altura            Int?
+  textoAlternativo  String?
+  criadoEm          DateTime @default(now())
+
+  equipamentos Equipamento[]
+  modelos      Modelo[]
+
+  @@map("imagens")
 }

@@ -20,7 +20,7 @@ export default async function PaginaUsuarios() {
         titulo="Usuários"
         descricao="Não há cadastro aberto: somente o administrador técnico cria contas."
       />
-      <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
+      <div className="grid gap-6 xl:grid-cols-[1fr_21rem]">
         <Card className="divide-y divide-gray-100">
           {usuarios.map((u) => (
             <div key={u.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
