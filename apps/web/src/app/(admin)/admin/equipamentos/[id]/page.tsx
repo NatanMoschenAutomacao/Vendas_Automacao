@@ -101,7 +101,7 @@ export default async function PaginaEquipamento({ params, searchParams }: PagePr
       {aba === "caracteristicas" && <AbaCaracteristicas e={e} />}
       {aba === "modelos" && <AbaModelos e={e} />}
       {aba === "imagem" && (
-        <Card className="max-w-3xl p-6">
+        <Card className="max-w-4xl p-6">
           <FormImagem
             acao={enviarImagem.bind(null, "equipamento", e.id)}
             remover={removerImagem.bind(null, "equipamento", e.id)}
@@ -119,7 +119,7 @@ type Equip = NonNullable<Awaited<ReturnType<typeof obterEquipamento>>>;
 async function AbaGeral({ e }: { e: Equip }) {
   const { arvore } = await listarArvoreDeCategorias();
   return (
-    <Card className="max-w-2xl p-6">
+    <Card className="max-w-4xl p-6">
       <FormEquipamento
         acao={atualizarEquipamento.bind(null, e.id)}
         categorias={opcoesDePai(arvore)}
@@ -132,7 +132,7 @@ async function AbaGeral({ e }: { e: Equip }) {
 
 function AbaCaracteristicas({ e }: { e: Equip }) {
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-gray-500">
@@ -186,7 +186,7 @@ function AbaCaracteristicas({ e }: { e: Equip }) {
 function AbaModelos({ e }: { e: Equip }) {
   const destaque = e.definicoes.slice(0, 3);
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
       <Card className="overflow-hidden" role="region" aria-label="Modelos">
         {e.modelos.length === 0 ? (
           <p className="px-6 py-12 text-center text-sm text-gray-500">Nenhum modelo cadastrado.</p>

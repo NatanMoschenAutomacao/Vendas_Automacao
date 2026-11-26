@@ -35,7 +35,7 @@ export default async function PaginaEquipamentos() {
         titulo="Equipamentos e modelos"
         descricao="Cadastre equipamentos, os campos técnicos de cada um e os modelos com seus valores."
       />
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="flex flex-col gap-6" role="region" aria-label="Lista de equipamentos">
           {grupos.length === 0 && (
             <Card className="flex flex-col items-center gap-2 px-6 py-16 text-center text-sm text-gray-500">

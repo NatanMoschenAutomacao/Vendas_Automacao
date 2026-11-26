@@ -7,14 +7,34 @@ import { Button } from "@/ui/button";
 import { BotaoEnviar } from "@/ui/submit-button";
 import type { EstadoDoFormulario } from "@/ui/form-status";
 import { useFormulario } from "@/ui/use-formulario";
-import { ROTULO_TIPO_DADO, ROTULO_TIPO_EQUIPAMENTO, TIPOS_DE_DADO, TIPOS_DE_EQUIPAMENTO } from "./schema";
+import {
+  ROTULO_TIPO_DADO,
+  ROTULO_TIPO_EQUIPAMENTO,
+  TIPOS_DE_DADO,
+  TIPOS_DE_EQUIPAMENTO,
+} from "./schema";
 
-type AcaoDeFormulario = (estado: EstadoDoFormulario, form: FormData) => Promise<EstadoDoFormulario>;
+type AcaoDeFormulario = (
+  estado: EstadoDoFormulario,
+  form: FormData,
+) => Promise<EstadoDoFormulario>;
 
-function Rodape({ estado, rotulo, pendente }: { estado: EstadoDoFormulario; rotulo: string; pendente: boolean }) {
+function Rodape({
+  estado,
+  rotulo,
+  pendente,
+}: {
+  estado: EstadoDoFormulario;
+  rotulo: string;
+  pendente: boolean;
+}) {
   return (
     <>
-      {estado.mensagem && <Mensagem tipo={estado.ok ? "sucesso" : "erro"}>{estado.mensagem}</Mensagem>}
+      {estado.mensagem && (
+        <Mensagem tipo={estado.ok ? "sucesso" : "erro"}>
+          {estado.mensagem}
+        </Mensagem>
+      )}
       <div>
         <BotaoEnviar pendente={pendente}>{rotulo}</BotaoEnviar>
       </div>
@@ -79,17 +99,32 @@ export function FormEquipamento({
   const e = estado.erros ?? {};
   return (
     <form ref={ref} onSubmit={onSubmit} className="flex flex-col gap-4">
-      <div className="grid gap-4 sm:grid-cols-[180px_1fr]">
+      <div className="grid gap-4 sm:grid-cols-[11.25rem_1fr]">
         <Campo rotulo="Código" erro={e.codigo} ajuda="Único. Ex.: EXAUSTOR">
-          <Input name="codigo" defaultValue={valores?.codigo} required maxLength={40} className="uppercase" />
+          <Input
+            name="codigo"
+            defaultValue={valores?.codigo}
+            required
+            maxLength={40}
+            className="uppercase"
+          />
         </Campo>
         <Campo rotulo="Nome do equipamento" erro={e.nome}>
-          <Input name="nome" defaultValue={valores?.nome} required maxLength={120} />
+          <Input
+            name="nome"
+            defaultValue={valores?.nome}
+            required
+            maxLength={120}
+          />
         </Campo>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo rotulo="Categoria" erro={e.categoriaId}>
-          <Select name="categoriaId" defaultValue={valores?.categoriaId ?? ""} required>
+          <Select
+            name="categoriaId"
+            defaultValue={valores?.categoriaId ?? ""}
+            required
+          >
             <option value="" disabled>
               Escolha…
             </option>
@@ -111,7 +146,11 @@ export function FormEquipamento({
         </Campo>
       </div>
       <Campo rotulo="Descrição" erro={e.descricao}>
-        <Textarea name="descricao" defaultValue={valores?.descricao ?? ""} maxLength={1000} />
+        <Textarea
+          name="descricao"
+          defaultValue={valores?.descricao ?? ""}
+          maxLength={1000}
+        />
       </Campo>
       <CaixaDeSelecao
         name="isDemo"
@@ -130,24 +169,39 @@ const USA_OPCOES = new Set(["LISTA", "MULTIPLA"]);
 
 export function FormNovaDefinicao({ acao }: { acao: AcaoDeFormulario }) {
   const [tipo, setTipo] = useState<string>("TEXTO");
-  const { estado, onSubmit, pendente } = useFormulario(async (anterior: EstadoDoFormulario, form: FormData) => {
-    const r = await acao(anterior, form);
-    if (r.ok) setTipo("TEXTO");
-    return r;
-  });
+  const { estado, onSubmit, pendente } = useFormulario(
+    async (anterior: EstadoDoFormulario, form: FormData) => {
+      const r = await acao(anterior, form);
+      if (r.ok) setTipo("TEXTO");
+      return r;
+    },
+  );
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => {
     if (estado.ok) ref.current?.reset();
   }, [estado]);
   const e = estado.erros ?? {};
   return (
-    <form ref={ref} onSubmit={onSubmit} className="flex flex-col gap-4" aria-label="Novo campo">
-      <Campo rotulo="Nome do campo" erro={e.rotulo} ajuda="Ex.: Vazão, Diâmetro da hélice">
+    <form
+      ref={ref}
+      onSubmit={onSubmit}
+      className="flex flex-col gap-4"
+      aria-label="Novo campo"
+    >
+      <Campo
+        rotulo="Nome do campo"
+        erro={e.rotulo}
+        ajuda="Ex.: Vazão, Diâmetro da hélice"
+      >
         <Input name="rotulo" required maxLength={60} />
       </Campo>
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo rotulo="Tipo de dado" erro={e.tipoDado}>
-          <Select name="tipoDado" value={tipo} onChange={(ev) => setTipo(ev.target.value)}>
+          <Select
+            name="tipoDado"
+            value={tipo}
+            onChange={(ev) => setTipo(ev.target.value)}
+          >
             {TIPOS_DE_DADO.map((t) => (
               <option key={t} value={t}>
                 {ROTULO_TIPO_DADO[t]}
@@ -155,7 +209,11 @@ export function FormNovaDefinicao({ acao }: { acao: AcaoDeFormulario }) {
             ))}
           </Select>
         </Campo>
-        <Campo rotulo="Unidade" erro={e.unidade} ajuda="Opcional. Ex.: kW, m³/h">
+        <Campo
+          rotulo="Unidade"
+          erro={e.unidade}
+          ajuda="Opcional. Ex.: kW, m³/h"
+        >
           <Input name="unidade" maxLength={20} />
         </Campo>
       </div>
@@ -175,26 +233,53 @@ export function FormEdicaoDefinicao({
   valores,
 }: {
   acao: AcaoDeFormulario;
-  valores: { rotulo: string; tipoDado: string; unidade: string | null; opcoes: string[]; obrigatorio: boolean };
+  valores: {
+    rotulo: string;
+    tipoDado: string;
+    unidade: string | null;
+    opcoes: string[];
+    obrigatorio: boolean;
+  };
 }) {
   const { estado, onSubmit, pendente } = useFormulario(acao);
   const e = estado.erros ?? {};
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
-      <div className="grid gap-3 sm:grid-cols-[1fr_140px]">
+      <div className="grid gap-3 sm:grid-cols-[1fr_8.75rem]">
         <Campo rotulo="Nome do campo" erro={e.rotulo}>
-          <Input name="rotulo" defaultValue={valores.rotulo} required maxLength={60} />
+          <Input
+            name="rotulo"
+            defaultValue={valores.rotulo}
+            required
+            maxLength={60}
+          />
         </Campo>
         <Campo rotulo="Unidade" erro={e.unidade}>
-          <Input name="unidade" defaultValue={valores.unidade ?? ""} maxLength={20} />
+          <Input
+            name="unidade"
+            defaultValue={valores.unidade ?? ""}
+            maxLength={20}
+          />
         </Campo>
       </div>
       {USA_OPCOES.has(valores.tipoDado) && (
-        <Campo rotulo="Opções" erro={e.opcoes} ajuda="Uma por linha. Modelos com opção removida deixam de ter esse valor ao salvar.">
-          <Textarea name="opcoes" rows={4} defaultValue={valores.opcoes.join("\n")} />
+        <Campo
+          rotulo="Opções"
+          erro={e.opcoes}
+          ajuda="Uma por linha. Modelos com opção removida deixam de ter esse valor ao salvar."
+        >
+          <Textarea
+            name="opcoes"
+            rows={4}
+            defaultValue={valores.opcoes.join("\n")}
+          />
         </Campo>
       )}
-      <CaixaDeSelecao name="obrigatorio" rotulo="Obrigatório nos modelos" defaultChecked={valores.obrigatorio} />
+      <CaixaDeSelecao
+        name="obrigatorio"
+        rotulo="Obrigatório nos modelos"
+        defaultChecked={valores.obrigatorio}
+      />
       <Rodape estado={estado} pendente={pendente} rotulo="Salvar campo" />
     </form>
   );
@@ -231,8 +316,12 @@ export function FormNovoModelo({ acao }: { acao: AcaoDeFormulario }) {
   const { estado, onSubmit, pendente } = useFormulario(acao);
   const e = estado.erros ?? {};
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4" aria-label="Novo modelo">
-      <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
+    <form
+      onSubmit={onSubmit}
+      className="flex flex-col gap-4"
+      aria-label="Novo modelo"
+    >
+      <div className="grid gap-4 sm:grid-cols-[10rem_1fr]">
         <Campo rotulo="Código do modelo" erro={e.codigo}>
           <Input name="codigo" required maxLength={40} className="uppercase" />
         </Campo>
@@ -278,10 +367,15 @@ function CampoDeAtributo({
     const marcados = Array.isArray(valor) ? (valor as string[]) : [];
     return (
       <fieldset className="flex flex-col gap-1.5">
-        <legend className="mb-1.5 text-sm font-medium text-grafite-700">{rotulo}</legend>
+        <legend className="mb-1.5 text-sm font-medium text-grafite-700">
+          {rotulo}
+        </legend>
         <div className="flex flex-wrap gap-x-4 gap-y-1.5">
           {d.opcoes.map((o) => (
-            <label key={o} className="flex items-center gap-1.5 text-sm text-grafite-700">
+            <label
+              key={o}
+              className="flex items-center gap-1.5 text-sm text-grafite-700"
+            >
               <input
                 type="checkbox"
                 name={nome}
@@ -300,7 +394,10 @@ function CampoDeAtributo({
   return (
     <Campo rotulo={rotulo} erro={erro}>
       {d.tipoDado === "LISTA" ? (
-        <Select name={nome} defaultValue={typeof valor === "string" ? valor : ""}>
+        <Select
+          name={nome}
+          defaultValue={typeof valor === "string" ? valor : ""}
+        >
           <option value="">(não informado)</option>
           {d.opcoes.map((o) => (
             <option key={o} value={o}>
@@ -309,7 +406,10 @@ function CampoDeAtributo({
           ))}
         </Select>
       ) : d.tipoDado === "BOOLEANO" ? (
-        <Select name={nome} defaultValue={valor === true ? "sim" : valor === false ? "nao" : ""}>
+        <Select
+          name={nome}
+          defaultValue={valor === true ? "sim" : valor === false ? "nao" : ""}
+        >
           <option value="">(não informado)</option>
           <option value="sim">Sim</option>
           <option value="nao">Não</option>
@@ -347,32 +447,66 @@ export function FormModelo({
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-6">
       <section className="flex flex-col gap-4">
-        <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
+        <div className="grid gap-4 sm:grid-cols-[10rem_1fr]">
           <Campo rotulo="Código do modelo" erro={e.codigo}>
-            <Input name="codigo" defaultValue={valores.codigo} required maxLength={40} className="uppercase" />
+            <Input
+              name="codigo"
+              defaultValue={valores.codigo}
+              required
+              maxLength={40}
+              className="uppercase"
+            />
           </Campo>
           <Campo rotulo="Nome do modelo" erro={e.nome}>
-            <Input name="nome" defaultValue={valores.nome} required maxLength={120} />
+            <Input
+              name="nome"
+              defaultValue={valores.nome}
+              required
+              maxLength={120}
+            />
           </Campo>
         </div>
         <Campo rotulo="Fabricante" erro={e.fabricante}>
-          <Input name="fabricante" defaultValue={valores.fabricante ?? ""} maxLength={80} />
+          <Input
+            name="fabricante"
+            defaultValue={valores.fabricante ?? ""}
+            maxLength={80}
+          />
         </Campo>
         <Campo rotulo="Descrição" erro={e.descricao}>
-          <Textarea name="descricao" defaultValue={valores.descricao ?? ""} maxLength={1000} />
+          <Textarea
+            name="descricao"
+            defaultValue={valores.descricao ?? ""}
+            maxLength={1000}
+          />
         </Campo>
-        <CaixaDeSelecao name="isDemo" rotulo="Dado de exemplo (DEMO)" defaultChecked={valores.isDemo} />
+        <CaixaDeSelecao
+          name="isDemo"
+          rotulo="Dado de exemplo (DEMO)"
+          defaultChecked={valores.isDemo}
+        />
       </section>
-      <section aria-label="Características técnicas" className="flex flex-col gap-4 border-t border-gray-100 pt-5">
-        <h2 className="font-medium text-grafite-900">Características técnicas</h2>
+      <section
+        aria-label="Características técnicas"
+        className="flex flex-col gap-4 border-t border-gray-100 pt-5"
+      >
+        <h2 className="font-medium text-grafite-900">
+          Características técnicas
+        </h2>
         {definicoes.length === 0 ? (
           <p className="text-sm text-gray-500">
-            Este equipamento ainda não tem campos de características. Cadastre-os na aba Características do equipamento.
+            Este equipamento ainda não tem campos de características.
+            Cadastre-os na aba Características do equipamento.
           </p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             {definicoes.map((d) => (
-              <CampoDeAtributo key={d.chave} d={d} valor={valores.atributos[d.chave]} erro={e[`attr:${d.chave}`]} />
+              <CampoDeAtributo
+                key={d.chave}
+                d={d}
+                valor={valores.atributos[d.chave]}
+                erro={e[`attr:${d.chave}`]}
+              />
             ))}
           </div>
         )}
@@ -396,11 +530,13 @@ export function FormImagem({
   textoAlternativo?: string | null;
 }) {
   const [previa, setPrevia] = useState<string | null>(null);
-  const { estado, onSubmit, pendente } = useFormulario(async (anterior: EstadoDoFormulario, form: FormData) => {
-    const r = await acao(anterior, form);
-    if (r.ok) setPrevia(null);
-    return r;
-  });
+  const { estado, onSubmit, pendente } = useFormulario(
+    async (anterior: EstadoDoFormulario, form: FormData) => {
+      const r = await acao(anterior, form);
+      if (r.ok) setPrevia(null);
+      return r;
+    },
+  );
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => {
     if (estado.ok) ref.current?.reset();
@@ -408,47 +544,73 @@ export function FormImagem({
   useEffect(() => () => void (previa && URL.revokeObjectURL(previa)), [previa]);
   const mostrada = previa ?? url;
   return (
-    <div className="grid gap-6 sm:grid-cols-[240px_1fr]">
-      <div className="grid aspect-[4/3] place-items-center overflow-hidden rounded-card border border-gray-200 bg-gray-50">
-        {mostrada ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={mostrada} alt={textoAlternativo ?? "Imagem"} className="size-full object-contain" />
-        ) : (
-          <div className="flex flex-col items-center gap-1 text-xs text-gray-400">
-            <ImageOff className="size-6" />
-            Sem imagem
-          </div>
-        )}
-      </div>
-      <form ref={ref} onSubmit={onSubmit} className="flex flex-col gap-4" aria-label="Enviar imagem">
-        <Campo rotulo="Arquivo de imagem" erro={estado.erros?.arquivo} ajuda="JPG, PNG ou WebP, até 4 MB.">
-          <input
-            type="file"
-            name="arquivo"
-            accept="image/jpeg,image/png,image/webp"
-            required
-            onChange={(ev) => {
-              const f = ev.target.files?.[0];
-              setPrevia(f ? URL.createObjectURL(f) : null);
-            }}
-            className="text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-marca-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-marca-700"
-          />
-        </Campo>
-        <Campo rotulo="Texto alternativo" ajuda="Descreve a imagem para leitores de tela.">
-          <Input name="textoAlternativo" defaultValue={textoAlternativo ?? ""} maxLength={200} />
-        </Campo>
-        {estado.mensagem && <Mensagem tipo={estado.ok ? "sucesso" : "erro"}>{estado.mensagem}</Mensagem>}
-        <div className="flex gap-2">
-          <BotaoEnviar pendente={pendente}>
-            <Upload className="size-4" /> Enviar imagem
-          </BotaoEnviar>
-          {url && (
-            <BotaoDeAcao acao={remover} variante="perigo" tamanho="md">
-              Remover imagem
-            </BotaoDeAcao>
+    <div className="@container">
+      <div className="grid gap-6 @lg:grid-cols-[15rem_1fr]">
+        <div className="grid aspect-[4/3] place-items-center overflow-hidden rounded-card border border-gray-200 bg-gray-50">
+          {mostrada ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={mostrada}
+              alt={textoAlternativo ?? "Imagem"}
+              className="size-full object-contain"
+            />
+          ) : (
+            <div className="flex flex-col items-center gap-1 text-xs text-gray-400">
+              <ImageOff className="size-6" />
+              Sem imagem
+            </div>
           )}
         </div>
-      </form>
+        <form
+          ref={ref}
+          onSubmit={onSubmit}
+          className="flex flex-col gap-4"
+          aria-label="Enviar imagem"
+        >
+          <Campo
+            rotulo="Arquivo de imagem"
+            erro={estado.erros?.arquivo}
+            ajuda="JPG, PNG ou WebP, até 4 MB."
+          >
+            <input
+              type="file"
+              name="arquivo"
+              accept="image/jpeg,image/png,image/webp"
+              required
+              onChange={(ev) => {
+                const f = ev.target.files?.[0];
+                setPrevia(f ? URL.createObjectURL(f) : null);
+              }}
+              className="text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-marca-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-marca-700"
+            />
+          </Campo>
+          <Campo
+            rotulo="Texto alternativo"
+            ajuda="Descreve a imagem para leitores de tela."
+          >
+            <Input
+              name="textoAlternativo"
+              defaultValue={textoAlternativo ?? ""}
+              maxLength={200}
+            />
+          </Campo>
+          {estado.mensagem && (
+            <Mensagem tipo={estado.ok ? "sucesso" : "erro"}>
+              {estado.mensagem}
+            </Mensagem>
+          )}
+          <div className="flex gap-2">
+            <BotaoEnviar pendente={pendente}>
+              <Upload className="size-4" /> Enviar imagem
+            </BotaoEnviar>
+            {url && (
+              <BotaoDeAcao acao={remover} variante="perigo" tamanho="md">
+                Remover imagem
+              </BotaoDeAcao>
+            )}
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

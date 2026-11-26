@@ -38,7 +38,7 @@ export default async function PaginaModelo({ params }: PageProps<"/admin/equipam
           </div>
         }
       />
-      <div className="flex max-w-3xl flex-col gap-6">
+      <div className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_28rem]">
         <Card className="p-6">
           <FormModelo
             acao={atualizarModelo.bind(null, m.id)}
