@@ -1,5 +1,6 @@
 // Fase 01: usuários, categorias, configurações e auditoria.
 // Fase 02: biblioteca de equipamentos (equipamentos, características, modelos e imagens).
+// Fase 03: perguntas dinâmicas com herança equipamento → modelo e condições.
 // As demais entidades entram nas fases seguintes, por migrations.
 
 generator client {
@@ -108,6 +109,7 @@ model Equipamento {
 
   definicoes DefinicaoDeAtributo[]
   modelos    Modelo[]
+  perguntas  Pergunta[]
 
   @@index([categoriaId, ordem])
   @@map("equipamentos")
@@ -149,6 +151,8 @@ model Modelo {
   criadoEm      DateTime    @default(now())
   atualizadoEm  DateTime    @updatedAt
 
+  perguntas Pergunta[]
+
   @@unique([equipamentoId, codigo])
   @@index([equipamentoId, ordem])
   @@map("modelos")
@@ -170,4 +174,48 @@ model Imagem {
   modelos      Modelo[]
 
   @@map("imagens")
+}
+
+enum ModoDeHeranca {
+  NOVA
+  SUBSTITUIR
+  OCULTAR
+}
+
+/// Pergunta dinâmica. Dono: equipamento OU modelo (painel, ambiente e projeto nas fases seguintes).
+model Pergunta {
+  id            String        @id @default(uuid()) @db.Uuid
+  equipamentoId String?       @db.Uuid
+  equipamento   Equipamento?  @relation(fields: [equipamentoId], references: [id], onDelete: Cascade)
+  modeloId      String?       @db.Uuid
+  modelo        Modelo?       @relation(fields: [modeloId], references: [id], onDelete: Cascade)
+  chave         String
+  modo          ModoDeHeranca @default(NOVA)
+  texto         String
+  ajuda         String?
+  /// Tipo do motor (SELECAO_UNICA, INTEIRO, CALCULADO...).
+  tipo          String
+  unidade       String?
+  obrigatoria   Boolean       @default(false)
+  minimo        Float?
+  maximo        Float?
+  passo         Float?
+  padrao        Json?
+  /// Árvore de condição (E/OU/NÃO). Nulo = sempre visível.
+  condicao      Json?
+  /// [{ valor, rotulo, imagemUrl?, condicao? }]
+  opcoes        Json          @default("[]")
+  atributo      String?
+  formula       String?
+  ordem         Int           @default(0)
+  ativo         Boolean       @default(true)
+  isDemo        Boolean       @default(false)
+  criadoEm      DateTime      @default(now())
+  atualizadoEm  DateTime      @updatedAt
+
+  @@unique([equipamentoId, chave])
+  @@unique([modeloId, chave])
+  @@index([equipamentoId, ordem])
+  @@index([modeloId, ordem])
+  @@map("perguntas")
 }
