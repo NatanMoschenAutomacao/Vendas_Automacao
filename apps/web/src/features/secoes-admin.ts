@@ -18,7 +18,12 @@ export const SECOES_ADMIN: SecaoAdmin[] = [
     href: "/admin/equipamentos",
     fase: 2,
   },
-  { titulo: "Perguntas e regras", descricao: "Perguntas dinâmicas e condições de exibição.", fase: 3 },
+  {
+    titulo: "Perguntas e regras",
+    descricao: "Perguntas dinâmicas e condições de exibição.",
+    href: "/admin/perguntas",
+    fase: 3,
+  },
   { titulo: "Imagens interativas", descricao: "Hotspots e conjuntos padrão (kits).", fase: 4 },
   { titulo: "Componentes elétricos", descricao: "Catálogo central e composições.", fase: 6 },
   { titulo: "Recursos de automação", descricao: "DI, DO, AI, AO, SP e comunicação.", fase: 6 },

@@ -27,6 +27,11 @@ import { AcoesDaDefinicao, AcoesDoCabecalhoDoEquipamento, AcoesDoModelo } from "
 import { ROTULO_TIPO_DADO, ROTULO_TIPO_EQUIPAMENTO } from "@/features/equipamentos/schema";
 import { Badge, CabecalhoDePagina, Card } from "@/ui/card";
 import { cn } from "@/lib/cn";
+import { detectarCiclo, resolverPerguntas } from "@zanatta/engine";
+import { carregarPerguntasDoEquipamento } from "@/features/perguntas/dados";
+import { ListaDePerguntas } from "@/features/perguntas/lista";
+import { PreVisualizacao } from "@/features/perguntas/pre-visualizacao";
+import { variaveisDisponiveis } from "@/features/perguntas/variaveis";
 
 export const metadata: Metadata = { title: "Equipamento" };
 
@@ -34,12 +39,12 @@ const ABAS = [
   { id: "geral", titulo: "Geral" },
   { id: "caracteristicas", titulo: "Características" },
   { id: "modelos", titulo: "Modelos" },
+  { id: "perguntas", titulo: "Perguntas" },
   { id: "imagem", titulo: "Imagem" },
 ] as const;
 
 /** Abas que dependem das próximas fases aparecem desabilitadas. */
 const ABAS_FUTURAS = [
-  { titulo: "Perguntas", fase: 3 },
   { titulo: "Imagens interativas", fase: 4 },
   { titulo: "Materiais e recursos", fase: 6 },
   { titulo: "Controladores", fase: 7 },
@@ -100,6 +105,7 @@ export default async function PaginaEquipamento({ params, searchParams }: PagePr
       {aba === "geral" && <AbaGeral e={e} />}
       {aba === "caracteristicas" && <AbaCaracteristicas e={e} />}
       {aba === "modelos" && <AbaModelos e={e} />}
+      {aba === "perguntas" && <AbaPerguntas e={e} />}
       {aba === "imagem" && (
         <Card className="max-w-4xl p-6">
           <FormImagem
@@ -243,6 +249,53 @@ function AbaModelos({ e }: { e: Equip }) {
       <Card className="h-fit p-5">
         <h2 className="mb-4 font-medium text-grafite-900">Novo modelo</h2>
         <FormNovoModelo acao={criarModelo.bind(null, e.id)} />
+      </Card>
+    </div>
+  );
+}
+
+async function AbaPerguntas({ e }: { e: Equip }) {
+  const dados = await carregarPerguntasDoEquipamento(e.id);
+  const rotulos = Object.fromEntries(
+    variaveisDisponiveis(dados.perguntasMotor, dados.definicoes).map((v) => [v.nome, v.rotulo.replace(/^[^›]+› /, "")]),
+  );
+  const problemas: string[] = [];
+  const ciclo = detectarCiclo(dados.perguntasMotor);
+  if (ciclo) problemas.push(`Referência circular no equipamento: ${ciclo.join(" → ")}.`);
+  for (const m of dados.modelosMotor) {
+    const r = resolverPerguntas(dados.perguntasMotor, m.perguntas);
+    for (const er of r.erros) problemas.push(`${m.nome}: ${er}`);
+    const c = detectarCiclo(r.perguntas);
+    if (c) problemas.push(`${m.nome}: referência circular ${c.join(" → ")}.`);
+  }
+  return (
+    <div className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_32rem]">
+      <div className="flex flex-col gap-3">
+        <p className="text-sm text-gray-500">
+          Perguntas feitas ao vendedor para cada {e.nome.toLowerCase()} do orçamento. Os modelos podem substituir ou ocultar estas
+          perguntas e ter perguntas próprias (na página de cada modelo).
+        </p>
+        {problemas.map((p) => (
+          <p key={p} className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {p}
+          </p>
+        ))}
+        <ListaDePerguntas
+          perguntas={dados.perguntas}
+          rotulos={rotulos}
+          hrefBase={`/admin/equipamentos/${e.id}/perguntas`}
+          hrefNova={`/admin/equipamentos/${e.id}/perguntas/nova`}
+          vazio="Nenhuma pergunta cadastrada para este equipamento."
+        />
+      </div>
+      <Card className="p-5">
+        <h2 className="mb-1 font-medium text-grafite-900">Pré-visualização</h2>
+        <p className="mb-4 text-xs text-gray-500">Simule as respostas para ver quais perguntas aparecem. Nada é salvo.</p>
+        <PreVisualizacao
+          perguntas={dados.perguntasMotor}
+          modelos={dados.modelosMotor.filter((m) => m.ativo)}
+          rotulos={rotulos}
+        />
       </Card>
     </div>
   );

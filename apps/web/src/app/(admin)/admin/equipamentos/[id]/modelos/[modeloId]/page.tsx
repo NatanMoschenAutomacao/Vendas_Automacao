@@ -7,6 +7,9 @@ import { atualizarModelo, enviarImagem, removerImagem } from "@/features/equipam
 import { FormImagem, FormModelo } from "@/features/equipamentos/formularios";
 import { AcoesDoCabecalhoDoModelo } from "@/features/equipamentos/acoes";
 import { Badge, CabecalhoDePagina, Card } from "@/ui/card";
+import { carregarPerguntasDoEquipamento } from "@/features/perguntas/dados";
+import { ListaDePerguntas } from "@/features/perguntas/lista";
+import { variaveisDisponiveis } from "@/features/perguntas/variaveis";
 
 export const metadata: Metadata = { title: "Modelo" };
 
@@ -18,6 +21,11 @@ export default async function PaginaModelo({ params }: PageProps<"/admin/equipam
   const e = await obterEquipamento(id);
   const m = e?.modelos.find((x) => x.id === modeloId);
   if (!e || !m) notFound();
+  const dados = await carregarPerguntasDoEquipamento(e.id);
+  const perguntasDoModelo = dados.modelos.find((x) => x.id === m.id)?.perguntas ?? [];
+  const rotulos = Object.fromEntries(
+    variaveisDisponiveis(dados.perguntasMotor, dados.definicoes).map((v) => [v.nome, v.rotulo.replace(/^[^›]+› /, "")]),
+  );
 
   return (
     <>
@@ -56,6 +64,21 @@ export default async function PaginaModelo({ params }: PageProps<"/admin/equipam
           />
         </Card>
       </div>
+      <section className="mt-8 flex max-w-5xl flex-col gap-3">
+        <div>
+          <h2 className="font-medium text-grafite-900">Perguntas deste modelo</h2>
+          <p className="text-sm text-gray-500">
+            Valem as perguntas de {e.nome}. Aqui o modelo pode substituir ou ocultar alguma delas e ter perguntas próprias.
+          </p>
+        </div>
+        <ListaDePerguntas
+          perguntas={perguntasDoModelo}
+          rotulos={rotulos}
+          hrefBase={`/admin/equipamentos/${e.id}/modelos/${m.id}/perguntas`}
+          hrefNova={`/admin/equipamentos/${e.id}/modelos/${m.id}/perguntas/nova`}
+          vazio="Este modelo usa as perguntas do equipamento sem alterações."
+        />
+      </section>
     </>
   );
 }
