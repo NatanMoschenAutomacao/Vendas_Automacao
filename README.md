@@ -64,6 +64,9 @@ Os testes de interface criam um banco novo e descartável a cada execução; nun
 2. **Netlify** (aplicação): *Add new site › Import from GitHub* e escolha este repositório. O `netlify.toml` já define a pasta e o comando.
 3. Em *Site configuration › Environment variables* do Netlify, cadastre:
    `DATABASE_URL`, `DIRECT_URL`, `SESSION_SECRET` (gere com `openssl rand -base64 48`).
+   Para o envio de imagens (Fase 02), cadastre também `SUPABASE_URL` (ex.: `https://PROJETO.supabase.co`) e
+   `SUPABASE_SERVICE_ROLE_KEY` (Supabase › *Project Settings › API Keys*, chave `service_role` ou *secret*).
+   O bucket público `imagens` é criado no primeiro envio. Sem essas variáveis o envio de imagens é recusado em produção.
 4. Faça o deploy. As migrations são aplicadas automaticamente a cada deploy.
 5. Crie o primeiro administrador uma única vez, no seu computador, apontando para o Supabase:
    ```bash

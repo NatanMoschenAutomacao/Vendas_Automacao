@@ -12,7 +12,12 @@ export interface SecaoAdmin {
 export const SECOES_ADMIN: SecaoAdmin[] = [
   { titulo: "Categorias e sistemas", descricao: "Árvore de categorias e sistemas.", href: "/admin/categorias", fase: 1 },
   { titulo: "Usuários", descricao: "Contas, perfis e senhas.", href: "/admin/usuarios", fase: 1 },
-  { titulo: "Equipamentos e modelos", descricao: "Cadastro, características técnicas e imagens.", fase: 2 },
+  {
+    titulo: "Equipamentos e modelos",
+    descricao: "Cadastro, características técnicas e imagens.",
+    href: "/admin/equipamentos",
+    fase: 2,
+  },
   { titulo: "Perguntas e regras", descricao: "Perguntas dinâmicas e condições de exibição.", fase: 3 },
   { titulo: "Imagens interativas", descricao: "Hotspots e conjuntos padrão (kits).", fase: 4 },
   { titulo: "Componentes elétricos", descricao: "Catálogo central e composições.", fase: 6 },
