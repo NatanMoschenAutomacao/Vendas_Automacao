@@ -1,0 +1,10 @@
+# Deploy no Netlify (plano gratuito). O Netlify detecta o Next.js e usa o
+# adaptador oficial automaticamente.
+[build]
+  base = "apps/web"
+  # Aplica as migrations pendentes no Supabase antes de construir.
+  command = "pnpm db:deploy && pnpm build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"

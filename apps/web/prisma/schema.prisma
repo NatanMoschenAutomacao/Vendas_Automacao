@@ -1,0 +1,74 @@
+// Schema da Fase 01: usuários, categorias, configurações e auditoria.
+// As entidades da biblioteca técnica entram nas fases seguintes, por migrations.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Perfil {
+  ADMIN_TECNICO
+  VENDEDOR
+}
+
+model Usuario {
+  id                  String    @id @default(uuid()) @db.Uuid
+  usuario             String    @unique
+  nome                String
+  perfil              Perfil
+  senhaHash           String
+  trocarSenha         Boolean   @default(true)
+  ativo               Boolean   @default(true)
+  tentativasFalhas    Int       @default(0)
+  bloqueadoAte        DateTime?
+  criadoEm            DateTime  @default(now())
+  atualizadoEm        DateTime  @updatedAt
+
+  auditorias RegistroDeAuditoria[]
+
+  @@map("usuarios")
+}
+
+model Categoria {
+  id           String      @id @default(uuid()) @db.Uuid
+  nome         String
+  descricao    String?
+  paiId        String?     @db.Uuid
+  pai          Categoria?  @relation("Arvore", fields: [paiId], references: [id], onDelete: Restrict)
+  filhas       Categoria[] @relation("Arvore")
+  ordem        Int         @default(0)
+  ativo        Boolean     @default(true)
+  isDemo       Boolean     @default(false)
+  criadoEm     DateTime    @default(now())
+  atualizadoEm DateTime    @updatedAt
+
+  @@index([paiId, ordem])
+  @@map("categorias")
+}
+
+model Configuracao {
+  chave        String   @id
+  valor        Json
+  atualizadoEm DateTime @updatedAt
+
+  @@map("configuracoes")
+}
+
+model RegistroDeAuditoria {
+  id         String   @id @default(uuid()) @db.Uuid
+  usuarioId  String?  @db.Uuid
+  usuario    Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  acao       String
+  entidade   String
+  entidadeId String?
+  antes      Json?
+  depois     Json?
+  criadoEm   DateTime @default(now())
+
+  @@index([entidade, entidadeId])
+  @@map("auditoria")
+}
