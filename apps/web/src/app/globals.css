@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+/*
+ * Identidade visual (§5): fundo branco, cinzas suaves, verde para seleção,
+ * grafite para contraste. Trocar aqui atualiza o sistema inteiro.
+ */
+@theme {
+  --color-marca-50: #f0fdf4;
+  --color-marca-100: #dcfce7;
+  --color-marca-500: #22c55e;
+  --color-marca-600: #16a34a;
+  --color-marca-700: #15803d;
+  --color-grafite-700: #374151;
+  --color-grafite-800: #1f2937;
+  --color-grafite-900: #111827;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --radius-card: 0.875rem;
+}
+
+@layer base {
+  body {
+    @apply bg-white text-grafite-800 antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-marca-600;
+  }
+}
