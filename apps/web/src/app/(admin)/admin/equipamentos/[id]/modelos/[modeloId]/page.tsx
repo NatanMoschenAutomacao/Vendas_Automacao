@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { obterEquipamento } from "@/features/equipamentos/queries";
-import { atualizarModelo, enviarImagem, removerImagem } from "@/features/equipamentos/actions";
+import { atualizarModelo, enviarImagem, removerImagem, salvarDerivacao } from "@/features/equipamentos/actions";
+import { FormDerivacao } from "@/features/equipamentos/derivacao";
 import { FormImagem, FormModelo } from "@/features/equipamentos/formularios";
 import { AcoesDoCabecalhoDoModelo } from "@/features/equipamentos/acoes";
 import { Badge, CabecalhoDePagina, Card } from "@/ui/card";
@@ -62,6 +63,8 @@ export default async function PaginaModelo({ params }: PageProps<"/admin/equipam
             url={m.imagemUrl}
             textoAlternativo={m.imagem?.textoAlternativo}
           />
+          <h2 className="mb-4 mt-8 font-medium text-grafite-900">Acionamento e proteção</h2>
+          <FormDerivacao acao={salvarDerivacao.bind(null, "modelo", m.id)} valores={m} herdavel />
         </Card>
       </div>
       <section className="mt-8 flex max-w-5xl flex-col gap-3">

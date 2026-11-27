@@ -31,6 +31,18 @@ export const SECOES_ADMIN: SecaoAdmin[] = [
     fase: 4,
   },
   { titulo: "Kits", descricao: "Conjuntos padrão, como a estação completa.", href: "/admin/kits", fase: 4 },
+  {
+    titulo: "Tipos de painel",
+    descricao: "Monitoramento, controle, ambos ou outros.",
+    href: "/admin/tipos-de-painel",
+    fase: 5,
+  },
+  {
+    titulo: "Funções de controle",
+    descricao: "Temperatura, umidade, temporização…",
+    href: "/admin/funcoes-de-controle",
+    fase: 5,
+  },
   { titulo: "Componentes elétricos", descricao: "Catálogo central e composições.", fase: 6 },
   { titulo: "Recursos de automação", descricao: "DI, DO, AI, AO, SP e comunicação.", fase: 6 },
   { titulo: "Controladores", descricao: "Funções, saídas funcionais e compatibilidades.", fase: 7 },

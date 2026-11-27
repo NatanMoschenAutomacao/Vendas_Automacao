@@ -1,5 +1,5 @@
 import "server-only";
-import type { EquipamentoNoSnapshot, ValorDeResposta } from "@zanatta/engine";
+import type { Derivacao, EquipamentoNoSnapshot, ValorDeResposta } from "@zanatta/engine";
 import { db } from "@/server/db";
 import { urlDaImagem } from "@/server/arquivos/armazenamento";
 import { paraPergunta, paraPerguntaDeModelo } from "@/features/perguntas/conversao";
@@ -7,13 +7,19 @@ import type { BibliotecaDoConfigurador } from "./tipos";
 
 const ordemPadrao = [{ ordem: "asc" as const }, { nome: "asc" as const }];
 
+const TIPO = { NENHUM: "nenhum", INDIVIDUAL: "individual", COLETIVO: "coletivo" } as const;
+
+function derivacao(tipo: keyof typeof TIPO | null, porGrupo: number | null): Derivacao | null {
+  return tipo ? { tipo: TIPO[tipo], porGrupo } : null;
+}
+
 /**
  * Recorte da biblioteca para o configurador. Inclui equipamentos e modelos
  * inativos no snapshot (para que rascunhos antigos mostrem a pendência),
  * mas o catálogo do vendedor só lista os ativos.
  */
 export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoConfigurador> {
-  const [categorias, equipamentos, kits, imagens] = await Promise.all([
+  const [categorias, equipamentos, kits, imagens, tiposDePainel, funcoes] = await Promise.all([
     db.categoria.findMany({
       where: { ativo: true },
       orderBy: ordemPadrao,
@@ -43,6 +49,8 @@ export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoCo
       orderBy: { nome: "asc" },
       include: { imagem: true, hotspots: { orderBy: { ordem: "asc" } } },
     }),
+    db.tipoDePainel.findMany({ orderBy: ordemPadrao, select: { id: true, nome: true, ativo: true } }),
+    db.funcaoDeControle.findMany({ orderBy: ordemPadrao, select: { id: true, codigo: true, nome: true, ativo: true } }),
   ]);
 
   const snapshot: Record<string, EquipamentoNoSnapshot> = {};
@@ -53,12 +61,16 @@ export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoCo
       nome: e.nome,
       ativo: e.ativo,
       perguntas: e.perguntas.map(paraPergunta),
+      acionamento: derivacao(e.acionamento, e.acionamentoPorGrupo),
+      protecao: derivacao(e.protecao, e.protecaoPorGrupo),
       modelos: e.modelos.map((m) => ({
         id: m.id,
         nome: m.nome,
         ativo: m.ativo,
         atributos: (m.atributos ?? {}) as Record<string, unknown>,
         perguntas: m.perguntas.map(paraPerguntaDeModelo),
+        acionamento: derivacao(m.acionamento, m.acionamentoPorGrupo),
+        protecao: derivacao(m.protecao, m.protecaoPorGrupo),
       })),
     };
   }
@@ -121,6 +133,13 @@ export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoCo
         alvoValor: h.alvoValor,
       })),
     })),
-    snapshot: { versao: new Date().toISOString(), equipamentos: snapshot },
+    tiposDePainel,
+    funcoes,
+    snapshot: {
+      versao: new Date().toISOString(),
+      equipamentos: snapshot,
+      tiposDePainel: Object.fromEntries(tiposDePainel.map((t) => [t.id, t])),
+      funcoes: Object.fromEntries(funcoes.map((f) => [f.id, f])),
+    },
   };
 }

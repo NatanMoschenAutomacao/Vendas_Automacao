@@ -29,6 +29,10 @@ export function variaveisDoModelo(definicoes: readonly DefinicaoParaVariavel[]):
 export const VARIAVEIS_DA_INSTANCIA: DescricaoDeVariavel[] = [
   { nome: "instancia.quantidade", rotulo: "Instância › Quantidade", tipo: "numero" },
   { nome: "instancia.fornecimento", rotulo: "Instância › Fornecimento", tipo: "lista", opcoes: ["fornecido", "existente"] },
+  { nome: "instancia.compartilhada", rotulo: "Instância › Atende mais de um ambiente", tipo: "booleano" },
+  { nome: "painel.tipo", rotulo: "Painel › Tipo", tipo: "texto" },
+  { nome: "painel.tensao", rotulo: "Painel › Tensão", tipo: "numero", unidade: "V" },
+  { nome: "projeto.ambientes", rotulo: "Projeto › Quantidade de ambientes", tipo: "numero" },
 ];
 
 export function variavelDaPergunta(p: Pergunta, definicoes: readonly DefinicaoParaVariavel[]): DescricaoDeVariavel {

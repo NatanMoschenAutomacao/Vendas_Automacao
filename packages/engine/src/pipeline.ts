@@ -1,6 +1,7 @@
 import type { Valor } from "./regras/contexto";
 import { resolverPerguntas } from "./perguntas/heranca";
 import { avaliarPerguntas, type ResultadoDasPerguntas } from "./perguntas/aplicabilidade";
+import { calcularEstrutura, contextoDeEstrutura } from "./estrutura/estrutura";
 import {
   ESTAGIOS,
   type ConfiguracaoDoProjeto,
@@ -13,8 +14,8 @@ import {
  * Ponto de entrada do motor. Recalcula tudo do zero a cada chamada:
  * nunca acumula sobre um resultado anterior (cenário 16 do §48).
  *
- * Executa os 8 estágios na ordem definida na arquitetura. Até a Fase 04 têm
- * lógica: perguntas (aplicabilidade por instância) e pendências.
+ * Executa os 8 estágios na ordem definida na arquitetura. Até a Fase 05 têm
+ * lógica: perguntas (aplicabilidade por instância), estrutura e pendências.
  */
 export function calcular(
   config: ConfiguracaoDoProjeto,
@@ -64,6 +65,7 @@ export function calcular(
     const heranca = resolverPerguntas(eq.perguntas, modelo?.perguntas ?? []);
     const ctx: Record<string, Valor> = {
       ...doProjeto,
+      ...contextoDeEstrutura(inst, config, snapshot),
       "instancia.quantidade": inst.quantidade,
       "instancia.fornecimento": inst.fornecimento,
     };
@@ -72,6 +74,10 @@ export function calcular(
     perguntas[inst.id] = r;
     pendencias.push(...r.pendencias);
   }
+
+  // Estágio 2: estrutura (ambientes, setores, painéis, acionamentos, proteções, grupos).
+  const { estrutura, pendencias: daEstrutura } = calcularEstrutura(config, snapshot);
+  pendencias.push(...daEstrutura);
 
   for (const inst of config.instancias) {
     if (!Number.isInteger(inst.quantidade) || inst.quantidade < 1) {
@@ -99,5 +105,5 @@ export function calcular(
       a.mensagem.localeCompare(b.mensagem),
   );
 
-  return { pendencias, perguntas, estagios: [...ESTAGIOS] };
+  return { pendencias, perguntas, estrutura, estagios: [...ESTAGIOS] };
 }

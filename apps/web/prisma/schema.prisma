@@ -108,6 +108,11 @@ model Equipamento {
   ordem            Int               @default(0)
   ativo            Boolean           @default(true)
   isDemo           Boolean           @default(false)
+  /// Como acionamentos e proteções são derivados das unidades (§18).
+  acionamento         TipoDeDerivacao @default(NENHUM)
+  acionamentoPorGrupo Int?
+  protecao            TipoDeDerivacao @default(NENHUM)
+  protecaoPorGrupo    Int?
   criadoEm         DateTime          @default(now())
   atualizadoEm     DateTime          @updatedAt
 
@@ -154,6 +159,11 @@ model Modelo {
   ordem         Int         @default(0)
   ativo         Boolean     @default(true)
   isDemo        Boolean     @default(false)
+  /// Substitui a regra do equipamento quando preenchido (null = herda).
+  acionamento         TipoDeDerivacao?
+  acionamentoPorGrupo Int?
+  protecao            TipoDeDerivacao?
+  protecaoPorGrupo    Int?
   criadoEm      DateTime    @default(now())
   atualizadoEm  DateTime    @updatedAt
 
@@ -363,4 +373,39 @@ model Hotspot {
 
   @@index([imagemInterativaId, ordem])
   @@map("hotspots")
+}
+
+enum TipoDeDerivacao {
+  NENHUM
+  INDIVIDUAL
+  COLETIVO
+}
+
+/// Tipo de painel (monitoramento, controle, ambos…), cadastrado pela equipe.
+model TipoDePainel {
+  id           String   @id @default(uuid()) @db.Uuid
+  nome         String   @unique
+  descricao    String?
+  ordem        Int      @default(0)
+  ativo        Boolean  @default(true)
+  isDemo       Boolean  @default(false)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@map("tipos_de_painel")
+}
+
+/// Função de controle (temperatura, umidade, temporização…), usada por grupos e saídas funcionais.
+model FuncaoDeControle {
+  id           String   @id @default(uuid()) @db.Uuid
+  codigo       String   @unique
+  nome         String
+  descricao    String?
+  ordem        Int      @default(0)
+  ativo        Boolean  @default(true)
+  isDemo       Boolean  @default(false)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@map("funcoes_de_controle")
 }

@@ -118,14 +118,23 @@ export function responder(
 }
 
 export function removerInstancia(config: ConfiguracaoDoProjeto, id: Id): ConfiguracaoDoProjeto {
-  return { ...config, instancias: config.instancias.filter((i) => i.id !== id) };
+  return {
+    ...config,
+    instancias: config.instancias.filter((i) => i.id !== id),
+    ...(config.grupos ? { grupos: config.grupos.map((g) => ({ ...g, membros: g.membros.filter((m) => m.instanciaId !== id) })) } : {}),
+  };
 }
 
 export function duplicarInstancia(config: ConfiguracaoDoProjeto, id: Id, gerarId: GeradorDeId): ConfiguracaoDoProjeto {
   const pos = config.instancias.findIndex((i) => i.id === id);
   if (pos < 0) return config;
   const orig = config.instancias[pos]!;
-  const copia: InstanciaDeEquipamento = { ...orig, id: gerarId(), respostas: { ...(orig.respostas ?? {}) } };
+  const copia: InstanciaDeEquipamento = {
+    ...orig,
+    id: gerarId(),
+    respostas: { ...(orig.respostas ?? {}) },
+    ...(orig.ambientes ? { ambientes: [...orig.ambientes] } : {}),
+  };
   const instancias = [...config.instancias];
   instancias.splice(pos + 1, 0, copia);
   return { ...config, instancias };

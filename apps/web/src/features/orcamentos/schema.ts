@@ -40,12 +40,43 @@ const instanciaSchema = z.object({
   fornecimento: z.enum(["fornecido", "existente"]),
   respostas: z.record(z.string().max(64), valorDeResposta).optional(),
   kitId: z.uuid().nullable().optional(),
+  ambientes: z.array(z.string().min(1).max(64)).max(100).optional(),
+  setorId: z.string().min(1).max(64).nullable().optional(),
+  painelId: z.string().min(1).max(64).nullable().optional(),
 });
+
+const idLocal = z.string().min(1).max(64);
+const nome = z.string().max(120);
 
 /** Configuração salva no rascunho (entrada do motor). */
 export const configuracaoSchema = z.object({
   schemaVersion: z.literal(1),
   instancias: z.array(instanciaSchema).max(500, "O projeto aceita no máximo 500 itens."),
+  ambientes: z.array(z.object({ id: idLocal, nome })).max(200).optional(),
+  setores: z.array(z.object({ id: idLocal, ambienteId: idLocal, nome })).max(500).optional(),
+  paineis: z
+    .array(
+      z.object({
+        id: idLocal,
+        identificacao: nome,
+        tipoId: z.uuid().nullable(),
+        tensao: z.number().finite().min(0).max(100_000).nullable(),
+        ambientes: z.array(idLocal).max(200),
+      }),
+    )
+    .max(100)
+    .optional(),
+  grupos: z
+    .array(
+      z.object({
+        id: idLocal,
+        nome,
+        funcaoId: z.uuid().nullable(),
+        membros: z.array(z.object({ instanciaId: idLocal, quantidade: z.number().int().min(0).max(100_000) })).max(500),
+      }),
+    )
+    .max(200)
+    .optional(),
 });
 
 export const CONFIGURACAO_VAZIA = { schemaVersion: 1 as const, instancias: [] };
