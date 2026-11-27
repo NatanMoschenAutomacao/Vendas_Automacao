@@ -35,6 +35,7 @@ import { carregarPerguntasDoEquipamento } from "@/features/perguntas/dados";
 import { ListaDePerguntas } from "@/features/perguntas/lista";
 import { PreVisualizacao } from "@/features/perguntas/pre-visualizacao";
 import { variaveisDisponiveis } from "@/features/perguntas/variaveis";
+import { ListaDeRegras } from "@/features/regras/lista";
 
 export const metadata: Metadata = { title: "Equipamento" };
 
@@ -46,11 +47,11 @@ const ABAS = [
   { id: "imagem", titulo: "Imagem" },
   { id: "imagens-interativas", titulo: "Imagens interativas" },
   { id: "estrutura", titulo: "Acionamento e proteção" },
+  { id: "materiais", titulo: "Materiais e recursos" },
 ] as const;
 
 /** Abas que dependem das próximas fases aparecem desabilitadas. */
 const ABAS_FUTURAS = [
-  { titulo: "Materiais e recursos", fase: 6 },
   { titulo: "Controladores", fase: 7 },
   { titulo: "Preços", fase: 9 },
 ];
@@ -119,6 +120,7 @@ export default async function PaginaEquipamento({ params, searchParams }: PagePr
         </Card>
       )}
       {aba === "imagens-interativas" && <AbaImagensInterativas equipamentoId={e.id} />}
+      {aba === "materiais" && <AbaMateriais equipamentoId={e.id} />}
       {aba === "imagem" && (
         <Card className="max-w-4xl p-6">
           <FormImagem
@@ -340,5 +342,54 @@ async function AbaImagensInterativas({ equipamentoId }: { equipamentoId: string 
         </Link>
       ))}
     </Card>
+  );
+}
+
+async function AbaMateriais({ equipamentoId }: { equipamentoId: string }) {
+  const ordem = [{ estagio: "asc" as const }, { prioridade: "asc" as const }, { codigo: "asc" as const }];
+  const [regras, modelos] = await Promise.all([
+    db.regra.findMany({ where: { equipamentoId }, orderBy: ordem }),
+    db.modelo.findMany({
+      where: { equipamentoId },
+      orderBy: [{ ordem: "asc" }, { nome: "asc" }],
+      select: { id: true, nome: true, item: { select: { codigo: true, descricao: true } }, regras: { orderBy: ordem } },
+    }),
+  ]);
+  const novo = (q: string, rotulo: string) => (
+    <Link href={`/admin/regras/nova?${q}`} className="inline-flex h-8 items-center rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium hover:bg-gray-50">
+      {rotulo}
+    </Link>
+  );
+  return (
+    <div className="flex max-w-5xl flex-col gap-6">
+      <p className="text-sm text-gray-500">
+        Regras do equipamento valem para todos os modelos. Use a base &quot;por acionamento&quot; ou &quot;por proteção&quot; para seguir a aba
+        Acionamento e proteção. Recursos (DI, DO, AI, AO) formam a lista de I/O.
+      </p>
+      <Card className="overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-2.5">
+          <h2 className="font-medium text-grafite-900">Regras do equipamento</h2>
+          <div className="flex gap-2">
+            {novo(`dono=equipamento&id=${equipamentoId}`, "Nova regra de material")}
+            {novo(`dono=equipamento&id=${equipamentoId}&estagio=recurso`, "Nova regra de recurso")}
+          </div>
+        </div>
+        <ListaDeRegras regras={regras} vazio="Nenhuma regra neste equipamento." rotulo="Regras do equipamento" />
+      </Card>
+      {modelos.map((m) => (
+        <Card key={m.id} className="overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-2.5">
+            <div>
+              <h2 className="font-medium text-grafite-900">Modelo {m.nome}</h2>
+              <p className="text-xs text-gray-500">
+                Item de fornecimento: {m.item ? `${m.item.codigo} — ${m.item.descricao}` : "não definido (defina na página do modelo)"}
+              </p>
+            </div>
+            {novo(`dono=modelo&id=${m.id}`, "Nova regra do modelo")}
+          </div>
+          <ListaDeRegras regras={m.regras} vazio="Sem regras próprias." rotulo={`Regras do modelo ${m.nome}`} />
+        </Card>
+      ))}
+    </div>
   );
 }

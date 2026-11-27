@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { Button } from "@/ui/button";
 import { Campo, Input, Textarea } from "@/ui/input";
 import { Mensagem } from "@/ui/card";
 import { AcoesDeLinha } from "@/ui/acoes-de-linha";
@@ -17,7 +18,7 @@ export function FormCadastro({
 }: {
   cadastro: Cadastro;
   acao: (e: EstadoDoFormulario, f: FormData) => Promise<EstadoDoFormulario>;
-  inicial?: { codigo?: string; nome: string; descricao: string | null; isDemo: boolean };
+  inicial?: { codigo?: string; nome: string; descricao: string | null; isDemo: boolean; fisico?: boolean };
 }) {
   const { estado, onSubmit, pendente } = useFormulario(acao);
   const ref = useRef<HTMLFormElement>(null);
@@ -27,6 +28,11 @@ export function FormCadastro({
   const e = estado.erros ?? {};
   return (
     <form ref={ref} onSubmit={onSubmit} className="flex flex-col gap-4">
+      {cadastro === "tipo-de-recurso" && (
+        <Campo rotulo="Código" erro={e.codigo} ajuda="Ex.: DI, DO, AI, AO, SP, RS485.">
+          <Input name="codigo" defaultValue={inicial?.codigo} required maxLength={20} className="uppercase" />
+        </Campo>
+      )}
       {cadastro === "funcao-de-controle" && (
         <Campo rotulo="Código" erro={e.codigo} ajuda="Ex.: temperatura. Usado em regras e relatórios.">
           <Input name="codigo" defaultValue={inicial?.codigo} required maxLength={40} />
@@ -38,6 +44,9 @@ export function FormCadastro({
       <Campo rotulo="Descrição" erro={e.descricao}>
         <Textarea name="descricao" defaultValue={inicial?.descricao ?? ""} maxLength={500} />
       </Campo>
+      {cadastro === "tipo-de-recurso" && (
+        <CaixaDeSelecao name="fisico" rotulo="Ponto físico de I/O" ajuda="Desmarque para saídas funcionais e comunicação." defaultChecked={inicial?.fisico ?? true} />
+      )}
       <CaixaDeSelecao name="isDemo" rotulo="Dado de demonstração (DEMO)" defaultChecked={inicial?.isDemo} />
       {estado.mensagem && <Mensagem tipo={estado.ok ? "sucesso" : "erro"}>{estado.mensagem}</Mensagem>}
       <div>
@@ -75,5 +84,18 @@ export function AcoesDoCadastro({
       excluir={() => excluirCadastro(cadastro, id)}
       avisoExclusao="Orçamentos que usam este cadastro passam a mostrar uma pendência."
     />
+  );
+}
+
+export function BotaoTiposPadrao({ acao }: { acao: () => Promise<EstadoDoFormulario> }) {
+  const [estado, setEstado] = useState<EstadoDoFormulario>({});
+  const [pendente, iniciar] = useTransition();
+  return (
+    <div className="flex flex-col gap-2">
+      <Button type="button" variante="secundario" disabled={pendente} onClick={() => iniciar(async () => setEstado(await acao()))}>
+        Adicionar DI, DO, AI e AO
+      </Button>
+      {estado.mensagem && <Mensagem tipo={estado.ok ? "sucesso" : "erro"}>{estado.mensagem}</Mensagem>}
+    </div>
   );
 }

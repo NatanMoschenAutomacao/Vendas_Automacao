@@ -11,6 +11,7 @@
 import type { Pergunta, PerguntaDeModelo, ValorDeResposta } from "./perguntas/tipos";
 import type { ResultadoDasPerguntas } from "./perguntas/aplicabilidade";
 import type { ResultadoDaEstrutura } from "./estrutura/estrutura";
+import type { AjusteManual, ItemNoSnapshot, RegraNoSnapshot, ResultadoDeMateriais, TipoDeRecursoNoSnapshot } from "./materiais/tipos";
 
 export type Id = string;
 
@@ -23,6 +24,8 @@ export interface ConfiguracaoDoProjeto {
   setores?: Setor[];
   paineis?: Painel[];
   grupos?: GrupoDeControle[];
+  /** Ajustes manuais da lista de materiais (Fase 06). */
+  ajustes?: AjusteManual[];
 }
 
 export interface Ambiente {
@@ -92,6 +95,8 @@ export interface ModeloNoSnapshot {
   /** Substitui a regra do equipamento quando presente. */
   acionamento?: Derivacao | null;
   protecao?: Derivacao | null;
+  /** Item do catálogo fornecido quando o equipamento é da Zanatta. */
+  itemId?: Id | null;
 }
 
 export interface EquipamentoNoSnapshot {
@@ -125,6 +130,9 @@ export interface SnapshotDaBiblioteca {
   equipamentos?: Record<Id, EquipamentoNoSnapshot>;
   tiposDePainel?: Record<Id, TipoDePainelNoSnapshot>;
   funcoes?: Record<Id, FuncaoDeControleNoSnapshot>;
+  itens?: Record<Id, ItemNoSnapshot>;
+  tiposDeRecurso?: Record<Id, TipoDeRecursoNoSnapshot>;
+  regras?: RegraNoSnapshot[];
 }
 
 export type Gravidade = "informativa" | "advertencia" | "impeditiva";
@@ -143,6 +151,8 @@ export interface ResultadoDoCalculo {
   perguntas: Record<Id, ResultadoDasPerguntas>;
   /** Contagens da estrutura (Fase 05). */
   estrutura: ResultadoDaEstrutura;
+  /** Materiais, consolidação e lista preliminar de I/O (Fase 06). */
+  materiais: ResultadoDeMateriais;
   /** Estágios executados, na ordem. Útil para depuração e testes. */
   estagios: NomeDoEstagio[];
 }

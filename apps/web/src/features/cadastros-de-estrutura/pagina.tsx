@@ -2,8 +2,8 @@ import Link from "next/link";
 import { db } from "@/server/db";
 import { exigirPermissaoNaPagina } from "@/server/auth/dal";
 import { Badge, CabecalhoDePagina, Card } from "@/ui/card";
-import { salvarCadastro } from "./actions";
-import { AcoesDoCadastro, FormCadastro } from "./componentes";
+import { criarTiposDeRecursoPadrao, salvarCadastro } from "./actions";
+import { AcoesDoCadastro, BotaoTiposPadrao, FormCadastro } from "./componentes";
 import { INFO_DO_CADASTRO, type Cadastro } from "./schema";
 
 /** Página de lista + formulário dos cadastros simples da estrutura. */
@@ -11,12 +11,20 @@ export async function PaginaDeCadastro({ cadastro, editar }: { cadastro: Cadastr
   await exigirPermissaoNaPagina("biblioteca:gerenciar");
   const info = INFO_DO_CADASTRO[cadastro];
   const ordem = [{ ordem: "asc" as const }, { nome: "asc" as const }];
-  const itens: { id: string; codigo?: string; nome: string; descricao: string | null; ativo: boolean; isDemo: boolean }[] =
-    cadastro === "tipo-de-painel" ? await db.tipoDePainel.findMany({ orderBy: ordem }) : await db.funcaoDeControle.findMany({ orderBy: ordem });
+  const itens: { id: string; codigo?: string; nome: string; descricao: string | null; ativo: boolean; isDemo: boolean; fisico?: boolean }[] =
+    cadastro === "tipo-de-painel"
+      ? await db.tipoDePainel.findMany({ orderBy: ordem })
+      : cadastro === "tipo-de-recurso"
+        ? await db.tipoDeRecurso.findMany({ orderBy: ordem })
+        : await db.funcaoDeControle.findMany({ orderBy: ordem });
   const emEdicao = editar ? itens.find((i) => i.id === editar) : undefined;
   return (
     <>
-      <CabecalhoDePagina titulo={info.titulo} descricao={info.descricao} />
+      <CabecalhoDePagina
+        titulo={info.titulo}
+        descricao={info.descricao}
+        acoes={cadastro === "tipo-de-recurso" ? <BotaoTiposPadrao acao={criarTiposDeRecursoPadrao} /> : undefined}
+      />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <Card className="h-fit overflow-hidden" role="region" aria-label={info.titulo}>
           {itens.length === 0 && <p className="px-4 py-12 text-center text-sm text-gray-500">Nenhum cadastro ainda.</p>}
@@ -26,6 +34,7 @@ export async function PaginaDeCadastro({ cadastro, editar }: { cadastro: Cadastr
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={i.ativo ? "font-medium text-grafite-800" : "text-gray-400 line-through"}>{i.nome}</span>
                   {i.codigo && <span className="font-mono text-xs text-gray-500">{i.codigo}</span>}
+                  {i.fisico === false && <Badge>Não físico</Badge>}
                   {!i.ativo && <Badge>Inativo</Badge>}
                   {i.isDemo && <Badge tom="demo">DEMO</Badge>}
                 </div>

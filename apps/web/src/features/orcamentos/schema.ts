@@ -77,6 +77,21 @@ export const configuracaoSchema = z.object({
     )
     .max(200)
     .optional(),
+  ajustes: z
+    .array(
+      z.object({
+        id: idLocal,
+        acao: z.enum(["quantidade", "remover", "adicionar"]),
+        chave: z.string().max(300).nullable().optional(),
+        itemId: z.uuid().nullable().optional(),
+        quantidade: z.number().finite().min(0).max(1_000_000).nullable().optional(),
+        justificativa: z.string().max(500),
+        autor: z.string().max(120).nullable().optional(),
+        data: z.string().max(40).nullable().optional(),
+      }),
+    )
+    .max(500)
+    .optional(),
 });
 
 export const CONFIGURACAO_VAZIA = { schemaVersion: 1 as const, instancias: [] };

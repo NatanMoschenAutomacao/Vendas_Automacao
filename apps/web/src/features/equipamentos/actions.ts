@@ -191,6 +191,7 @@ export async function duplicarEquipamento(id: string) {
             acionamentoPorGrupo: m.acionamentoPorGrupo,
             protecao: m.protecao,
             protecaoPorGrupo: m.protecaoPorGrupo,
+            itemId: m.itemId,
           })),
         },
       },
@@ -471,6 +472,7 @@ export async function duplicarModelo(id: string) {
         acionamentoPorGrupo: o.acionamentoPorGrupo,
         protecao: o.protecao,
         protecaoPorGrupo: o.protecaoPorGrupo,
+        itemId: o.itemId,
         ordem: (ultima._max.ordem ?? -1) + 1,
       },
     });
@@ -621,4 +623,23 @@ export async function salvarDerivacao(alvo: Alvo, id: string, _: EstadoDoFormula
   });
   revalidar(equipamentoId);
   return { ok: true, mensagem: "Regras salvas." };
+}
+
+/** Item do catálogo que representa o próprio modelo no fornecimento (Fase 06). */
+export async function salvarItemDoModelo(modeloId: string, _: EstadoDoFormulario, form: FormData): Promise<EstadoDoFormulario> {
+  const u = await exigirPermissao(ACAO);
+  idSchema.parse(modeloId);
+  const bruto = String(form.get("itemId") ?? "");
+  const itemId = bruto === "" ? null : bruto;
+  if (itemId && !idSchema.safeParse(itemId).success) return { erros: { itemId: "Item inválido." } };
+  if (itemId && !(await db.itemDeCatalogo.findUnique({ where: { id: itemId }, select: { id: true } })))
+    return { erros: { itemId: "Item não encontrado." } };
+  const antes = await db.modelo.findUnique({ where: { id: modeloId } });
+  if (!antes) return { mensagem: "Modelo não encontrado." };
+  await db.$transaction(async (tx) => {
+    await tx.modelo.update({ where: { id: modeloId }, data: { itemId } });
+    await auditar(tx, { usuarioId: u.id, acao: "editar-item", entidade: "modelo", entidadeId: modeloId, antes: { itemId: antes.itemId }, depois: { itemId } });
+  });
+  revalidar(antes.equipamentoId);
+  return { ok: true, mensagem: "Item de fornecimento salvo." };
 }

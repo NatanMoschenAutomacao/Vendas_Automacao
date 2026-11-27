@@ -10,3 +10,5 @@ export * from "./perguntas/aplicabilidade";
 export * from "./configurador/edicao";
 export * from "./estrutura/estrutura";
 export * from "./estrutura/edicao";
+export * from "./materiais/tipos";
+export * from "./materiais/motor";
