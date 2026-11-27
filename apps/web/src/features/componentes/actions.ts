@@ -5,6 +5,7 @@ import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/server/db";
 import { exigirPermissao } from "@/server/auth/dal";
+import { pode } from "@/server/auth/permissions";
 import { auditar } from "@/server/audit";
 import type { EstadoDoFormulario } from "@/ui/form-status";
 import { interpretarPlanilha } from "./importacao";
@@ -27,6 +28,7 @@ function lerItem(form: FormData) {
     descricao: t("descricao"),
     unidade: t("unidade"),
     fracionavel: form.get("fracionavel") === "on",
+    grupoComercial: t("grupoComercial") || "MATERIAL",
     codigoFabricante: t("codigoFabricante"),
     fabricante: t("fabricante"),
     modelo: t("modelo"),
@@ -133,6 +135,10 @@ export async function importarItens(_: ResultadoDaImportacao, form: FormData): P
   const resumo = { novos: validas.filter((l) => !existentes.has(l.dados!.codigo)).length, atualizados: validas.filter((l) => existentes.has(l.dados!.codigo)).length, erros, simulado };
   if (simulado || validas.length === 0) return { resumo };
 
+  // Preços na planilha exigem permissão de preços.
+  if (validas.some((l) => l.preco) && !pode(u.perfil, "precos:gerenciar")) return { mensagem: "Você não pode importar preços." };
+  const agora = new Date();
+  let precos = 0;
   await db.$transaction(
     async (tx) => {
       const categorias = new Map((await tx.categoriaDeComponente.findMany()).map((c) => [c.nome.toLowerCase(), c.id]));
@@ -146,16 +152,31 @@ export async function importarItens(_: ResultadoDaImportacao, form: FormData): P
             categorias.set(categoria.toLowerCase(), categoriaId);
           }
         }
-        await tx.itemDeCatalogo.upsert({
+        const salvo = await tx.itemDeCatalogo.upsert({
           where: { codigo: dados.codigo },
           create: { ...dados, categoriaId, isDemo },
           update: { ...dados, ...(categoria ? { categoriaId } : {}) },
         });
+        if (l.preco) {
+          precos++;
+          await tx.precoDoItem.create({
+            data: {
+              itemId: salvo.id,
+              modo: l.preco.modo === "venda_fixa" ? "VENDA_FIXA" : "CUSTO_REGRA",
+              custo: l.preco.custo,
+              venda: l.preco.venda,
+              vigenteDesde: agora,
+              atualizadoPor: u.nome,
+              observacao: "Importado por planilha",
+              isDemo: salvo.isDemo,
+            },
+          });
+        }
       }
-      await auditar(tx, { usuarioId: u.id, acao: "importar", entidade: "item", depois: { novos: resumo.novos, atualizados: resumo.atualizados } });
+      await auditar(tx, { usuarioId: u.id, acao: "importar", entidade: "item", depois: { novos: resumo.novos, atualizados: resumo.atualizados, precos } });
     },
     { timeout: 60_000 },
   );
   revalidatePath(CAMINHO);
-  return { ok: true, mensagem: `Importação concluída: ${resumo.novos} novo(s), ${resumo.atualizados} atualizado(s).`, resumo };
+  return { ok: true, mensagem: `Importação concluída: ${resumo.novos} novo(s), ${resumo.atualizados} atualizado(s)${precos ? `, ${precos} preço(s) registrado(s)` : ""}.`, resumo };
 }

@@ -1,8 +1,9 @@
 import "server-only";
-import type { Condicao, ControladorNoSnapshot, Derivacao, EquipamentoNoSnapshot, RegraNoSnapshot, ValorDeResposta } from "@zanatta/engine";
+import type { Condicao, ControladorNoSnapshot, Derivacao, EquipamentoNoSnapshot, RegraNoSnapshot, SnapshotDaBiblioteca, ValorDeResposta } from "@zanatta/engine";
 import { donoDoBanco } from "@/features/regras/dados";
-import { efeitoSchema } from "@/features/regras/schema";
+import { efeitoSchema, ESTAGIO_DO_BANCO } from "@/features/regras/schema";
 import { lerReservaPadrao } from "@/features/configuracoes/dados";
+import { carregarComercialDoSnapshot, ocultarCustos } from "@/features/precos/dados";
 import { db } from "@/server/db";
 import { urlDaImagem } from "@/server/arquivos/armazenamento";
 import { paraPergunta, paraPerguntaDeModelo } from "@/features/perguntas/conversao";
@@ -21,8 +22,8 @@ function derivacao(tipo: keyof typeof TIPO | null, porGrupo: number | null): Der
  * inativos no snapshot (para que rascunhos antigos mostrem a pendência),
  * mas o catálogo do vendedor só lista os ativos.
  */
-export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoConfigurador> {
-  const [categorias, equipamentos, kits, imagens, tiposDePainel, funcoes, itens, tiposDeRecurso, regras, controladores, cartoes, reservaPadrao] = await Promise.all([
+export async function carregarBibliotecaDoConfigurador({ verCusto }: { verCusto: boolean }): Promise<BibliotecaDoConfigurador> {
+  const [categorias, equipamentos, kits, imagens, tiposDePainel, funcoes, itens, tiposDeRecurso, regras, controladores, cartoes, reservaPadrao, comercial] = await Promise.all([
     db.categoria.findMany({
       where: { ativo: true },
       orderBy: ordemPadrao,
@@ -56,7 +57,7 @@ export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoCo
     db.funcaoDeControle.findMany({ orderBy: ordemPadrao, select: { id: true, codigo: true, nome: true, ativo: true } }),
     db.itemDeCatalogo.findMany({
       orderBy: { codigo: "asc" },
-      select: { id: true, codigo: true, descricao: true, unidade: true, fracionavel: true, ativo: true },
+      select: { id: true, codigo: true, descricao: true, unidade: true, fracionavel: true, ativo: true, grupoComercial: true },
     }),
     db.tipoDeRecurso.findMany({
       orderBy: [{ ordem: "asc" }, { codigo: "asc" }],
@@ -74,6 +75,7 @@ export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoCo
     }),
     db.cartaoDeExpansao.findMany({ include: { item: { select: { codigo: true, descricao: true } }, recursos: true } }),
     lerReservaPadrao(),
+    carregarComercialDoSnapshot(),
   ]);
 
   const TIPO_CONTROLADOR = { CONVENCIONAL: "convencional", DIGITAL: "digital", CLP: "clp", IRRIGACAO: "irrigacao", IHM: "ihm" } as const;
@@ -128,7 +130,7 @@ export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoCo
     codigo: r.codigo,
     nome: r.nome,
     dono: donoDoBanco(r),
-    estagio: r.estagio === "RECURSO" ? "recurso" : "material",
+    estagio: ESTAGIO_DO_BANCO[r.estagio],
     base: r.base as RegraNoSnapshot["base"],
     condicao: (r.condicao ?? null) as Condicao | null,
     prioridade: r.prioridade,
@@ -200,12 +202,15 @@ export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoCo
     })),
     tiposDePainel,
     funcoes,
-    snapshot: {
+    snapshot: (verCusto ? (s: SnapshotDaBiblioteca) => s : ocultarCustos)({
+      ...comercial,
       versao: new Date().toISOString(),
       equipamentos: snapshot,
       tiposDePainel: Object.fromEntries(tiposDePainel.map((t) => [t.id, t])),
       funcoes: Object.fromEntries(funcoes.map((f) => [f.id, f])),
-      itens: Object.fromEntries(itens.map((i) => [i.id, i])),
+      itens: Object.fromEntries(
+        itens.map(({ grupoComercial, ...i }) => [i.id, { ...i, grupo: grupoComercial === "SOFTWARE" ? ("software" as const) : ("material" as const) }]),
+      ),
       tiposDeRecurso: Object.fromEntries(tiposDeRecurso.map((t) => [t.id, t])),
       regras: regrasDoMotor,
       controladores: controladoresDoMotor,
@@ -225,6 +230,6 @@ export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoCo
         ]),
       ),
       reservaPadrao,
-    },
+    }),
   };
 }

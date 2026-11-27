@@ -9,6 +9,7 @@ import { ROTULO_STATUS } from "@/features/orcamentos/schema";
 import { AcoesDoOrcamento } from "@/features/orcamentos/acoes";
 import { carregarBibliotecaDoConfigurador } from "@/features/configurador/biblioteca";
 import { Configurador } from "@/features/configurador/configurador";
+import { lerLimiteDeDesconto } from "@/features/precos/dados";
 import { Badge, CabecalhoDePagina } from "@/ui/card";
 
 export const metadata: Metadata = { title: "Configurador" };
@@ -17,7 +18,12 @@ export default async function PaginaDoConfigurador({ params }: PageProps<"/orcam
   const usuario = await exigirPermissaoNaPagina("orcamento:ver");
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
-  const [o, biblioteca] = await Promise.all([obterOrcamento(id), carregarBibliotecaDoConfigurador()]);
+  const descontoLivre = pode(usuario.perfil, "precos:desconto-livre");
+  const [o, biblioteca, limite] = await Promise.all([
+    obterOrcamento(id),
+    carregarBibliotecaDoConfigurador({ verCusto: pode(usuario.perfil, "precos:ver-custo") }),
+    lerLimiteDeDesconto(),
+  ]);
   if (!o) notFound();
   const editavel = o.status === "RASCUNHO";
   return (
@@ -49,6 +55,7 @@ export default async function PaginaDoConfigurador({ params }: PageProps<"/orcam
         orcamentoId={o.id}
         editavel={editavel}
         podeAjustarReserva={pode(usuario.perfil, "configuracoes:gerenciar")}
+        comercial={{ descontoLivre, limiteDeDesconto: limite.percentual }}
         biblioteca={biblioteca}
         inicial={o.configuracao}
         salvoEm={o.revisao?.salvoEm.toISOString() ?? null}

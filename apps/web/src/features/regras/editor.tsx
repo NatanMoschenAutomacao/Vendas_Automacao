@@ -19,6 +19,14 @@ export interface OpcaoDeItem {
   ativo: boolean;
 }
 
+export interface OpcaoDeServico {
+  id: string;
+  codigo: string;
+  descricao: string;
+  unidade: string;
+  ativo: boolean;
+}
+
 export interface OpcaoDeRecurso {
   id: string;
   codigo: string;
@@ -38,6 +46,8 @@ function novoEfeito(acao: EfeitoEditado["acao"]): EfeitoEditado {
       return { acao, itemId: "" };
     case "recurso":
       return { acao, tipoRecursoId: "", funcao: null, formula: "base.quantidade" };
+    case "servico":
+      return { acao, servicoId: "", formula: "base.quantidade", arredondamento: "nenhum" };
   }
 }
 
@@ -75,6 +85,7 @@ export function EditorDeRegra({
   comuns,
   itens,
   recursos,
+  servicos = [],
   salvar,
 }: {
   inicial: DadosDaRegra;
@@ -82,6 +93,7 @@ export function EditorDeRegra({
   comuns: DescricaoDeVariavel[];
   itens: OpcaoDeItem[];
   recursos: OpcaoDeRecurso[];
+  servicos?: OpcaoDeServico[];
   salvar: (json: string) => Promise<EstadoDoFormulario>;
 }) {
   const [d, setD] = useState<DadosDaRegra>(() => ({
@@ -94,7 +106,10 @@ export function EditorDeRegra({
   const mudar = (m: Partial<DadosDaRegra>) => setD((x) => ({ ...x, ...m }));
   const mudarEfeito = (n: number, ef: EfeitoEditado) => setD((x) => ({ ...x, efeitos: x.efeitos.map((y, i) => (i === n ? ef : y)) }));
   const variaveis = variaveisDaRegra(comuns, dono, d.base);
-  const acoes: EfeitoEditado["acao"][] = d.estagio === "recurso" ? ["recurso"] : ["adicionar", "substituir", "quantidade", "remover"];
+  const acoes: EfeitoEditado["acao"][] =
+    d.estagio === "recurso" ? ["recurso"] : d.estagio === "servico" ? ["servico"] : ["adicionar", "substituir", "quantidade", "remover"];
+  const doEstagio = (estagio: DadosDaRegra["estagio"], ef: EfeitoEditado) =>
+    estagio === "recurso" ? ef.acao === "recurso" : estagio === "servico" ? ef.acao === "servico" : ef.acao !== "recurso" && ef.acao !== "servico";
 
   return (
     <div className="flex flex-col gap-6">
@@ -111,16 +126,17 @@ export function EditorDeRegra({
           <Textarea value={d.descricao ?? ""} maxLength={1000} onChange={(x) => mudar({ descricao: x.target.value })} />
         </Campo>
         <div className="grid gap-4 @lg:grid-cols-3">
-          <Campo rotulo="Estágio" erro={e.estagio} ajuda="Recursos são calculados antes dos materiais.">
+          <Campo rotulo="Estágio" erro={e.estagio} ajuda="Recursos são calculados antes dos materiais; serviços, depois.">
             <Select
               value={d.estagio}
               onChange={(x) => {
                 const estagio = x.target.value as DadosDaRegra["estagio"];
-                mudar({ estagio, efeitos: d.efeitos.filter((ef) => (estagio === "recurso") === (ef.acao === "recurso")) });
+                mudar({ estagio, efeitos: d.efeitos.filter((ef) => doEstagio(estagio, ef)) });
               }}
             >
               <option value="material">Material</option>
               <option value="recurso">Recurso de automação</option>
+              <option value="servico">Serviço</option>
             </Select>
           </Campo>
           <Campo rotulo="Base de cálculo" erro={e.base}>
@@ -181,7 +197,20 @@ export function EditorDeRegra({
                   ))}
                 </Select>
               </Campo>
-              {ef.acao === "recurso" ? (
+              {ef.acao === "servico" ? (
+                <Campo rotulo={`Serviço do efeito ${n + 1}`}>
+                  <Select value={ef.servicoId} onChange={(x) => mudarEfeito(n, { ...ef, servicoId: x.target.value })}>
+                    <option value="">Escolha…</option>
+                    {servicos
+                      .filter((s) => s.ativo || s.id === ef.servicoId)
+                      .map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.codigo} — {s.descricao} ({s.unidade}){s.ativo ? "" : " [inativo]"}
+                        </option>
+                      ))}
+                  </Select>
+                </Campo>
+              ) : ef.acao === "recurso" ? (
                 <Campo rotulo={`Tipo de recurso do efeito ${n + 1}`}>
                   <Select value={ef.tipoRecursoId} onChange={(x) => mudarEfeito(n, { ...ef, tipoRecursoId: x.target.value })}>
                     <option value="">Escolha…</option>
@@ -217,7 +246,7 @@ export function EditorDeRegra({
                   <Input value={ef.formula} maxLength={500} className="font-mono" onChange={(x) => mudarEfeito(n, { ...ef, formula: x.target.value })} />
                 </Campo>
               )}
-              {(ef.acao === "adicionar" || ef.acao === "quantidade") && (
+              {(ef.acao === "adicionar" || ef.acao === "quantidade" || ef.acao === "servico") && (
                 <Campo rotulo={`Arredondamento do efeito ${n + 1}`} ajuda="Itens não fracionáveis sempre arredondam para cima.">
                   <Select value={ef.arredondamento} onChange={(x) => mudarEfeito(n, { ...ef, arredondamento: x.target.value as typeof ef.arredondamento })}>
                     {Object.entries(ROTULO_ARREDONDAMENTO).map(([v, r]) => (

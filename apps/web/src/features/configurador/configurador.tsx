@@ -38,6 +38,7 @@ import { ImagemComHotspots } from "./imagem-com-hotspots";
 import { PainelDeEstrutura, PainelDeGrupos, ResumoDaEstrutura } from "./estrutura";
 import { PainelDeMateriais } from "./materiais";
 import { PainelDeControladores } from "./controladores";
+import { PainelDePrecos, type PermissoesComerciais } from "./precos";
 import type {
   BibliotecaDoConfigurador,
   CategoriaDoConfigurador,
@@ -61,10 +62,12 @@ export function Configurador({
   inicial,
   salvoEm,
   podeAjustarReserva = false,
+  comercial = { descontoLivre: false, limiteDeDesconto: "0" },
 }: {
   orcamentoId: string;
   editavel: boolean;
   podeAjustarReserva?: boolean;
+  comercial?: PermissoesComerciais;
   biblioteca: BibliotecaDoConfigurador;
   inicial: ConfiguracaoDoProjeto;
   salvoEm: string | null;
@@ -74,7 +77,7 @@ export function Configurador({
   const [selecionada, setSelecionada] = useState<string | null>(inicial.instancias[0]?.id ?? null);
   const [categoriaAtual, setCategoriaAtual] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
-  const [aba, setAba] = useState<"itens" | "estrutura" | "grupos" | "controladores" | "materiais">("itens");
+  const [aba, setAba] = useState<"itens" | "estrutura" | "grupos" | "controladores" | "materiais" | "precos">("itens");
   const [salvamento, setSalvamento] = useState<EstadoDoSalvamento>({ tipo: "salvo", em: salvoEm ? new Date(salvoEm) : null });
 
   const resultado = useMemo(() => calcular(config, snapshot), [config, snapshot]);
@@ -234,6 +237,9 @@ export function Configurador({
     if (config.ajustes?.some((a) => a.id === id)) return { nome: "Ajuste manual", aba: "materiais" };
     const controlador = config.controladores?.find((x) => x.id === id);
     if (controlador) return { nome: controlador.nome, aba: "controladores" };
+    if (config.servicos?.some((x) => x.id === id) || config.comercial?.ajustes?.some((x) => x.id === id)) return { nome: "Preços", aba: "precos" };
+    const linha = resultado.precos.linhas.find((l) => l.itemId === id || l.servicoId === id);
+    if (linha) return { nome: linha.codigo, aba: "precos" };
     return null;
   };
   const pendenciasPorInstancia = new Map<string, Pendencia[]>();
@@ -306,6 +312,7 @@ export function Configurador({
             ["grupos", "Grupos de controle"],
             ["controladores", "Controladores"],
             ["materiais", "Materiais e I/O"],
+            ["precos", "Preços"],
           ] as const
         ).map(([id, titulo]) => (
           <button
@@ -363,6 +370,9 @@ export function Configurador({
           editavel={editavel}
           nomeDaInstancia={(id) => nomeDaInstancia(id) ?? "item"}
         />
+      )}
+      {aba === "precos" && (
+        <PainelDePrecos config={config} mudar={mudar} biblioteca={biblioteca} precos={resultado.precos} editavel={editavel} comercial={comercial} />
       )}
       {aba !== "itens" && cartaoDePendencias}
 

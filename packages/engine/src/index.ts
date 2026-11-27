@@ -16,3 +16,6 @@ export * from "./controladores/tipos";
 export * from "./controladores/controladores";
 export * from "./controladores/edicao";
 export * from "./controladores/expansao";
+export * from "./precos/tipos";
+export * from "./precos/precos";
+export * from "./precos/edicao";

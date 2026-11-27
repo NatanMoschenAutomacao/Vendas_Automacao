@@ -14,6 +14,10 @@ export const ACOES = [
   "biblioteca:ver",
   "biblioteca:gerenciar",
   "precos:ver-custo",
+  /** Cadastrar preços, serviços, regra comercial, impostos e limite de desconto. */
+  "precos:gerenciar",
+  /** Aplicar descontos acima do limite do vendedor e descontos em valor. */
+  "precos:desconto-livre",
   "usuarios:gerenciar",
   "configuracoes:gerenciar",
 ] as const;

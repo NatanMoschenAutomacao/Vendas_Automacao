@@ -28,7 +28,12 @@ export const ROTULO_ACAO = {
   quantidade: "Alterar quantidade",
   remover: "Remover item",
   recurso: "Gerar recurso de automação",
+  servico: "Incluir serviço",
 } as const;
+
+export const ROTULO_ESTAGIO = { recurso: "Recurso", material: "Material", servico: "Serviço" } as const;
+export const ESTAGIO_PARA_BANCO = { recurso: "RECURSO", material: "MATERIAL", servico: "SERVICO" } as const;
+export const ESTAGIO_DO_BANCO = { RECURSO: "recurso", MATERIAL: "material", SERVICO: "servico" } as const;
 
 export const ROTULO_DONO: Record<DonoDaRegra["tipo"], string> = {
   equipamento: "Equipamento",
@@ -58,6 +63,7 @@ export const efeitoSchema = z.discriminatedUnion("acao", [
       .transform((v) => (v ? v : null)),
     formula,
   }),
+  z.object({ acao: z.literal("servico"), servicoId: z.uuid("Escolha o serviço."), formula, arredondamento }),
 ]);
 
 export const regraSchema = z.object({
@@ -75,7 +81,7 @@ export const regraSchema = z.object({
     .max(1000, "Use no máximo 1000 caracteres.")
     .nullable()
     .transform((v) => (v ? v : null)),
-  estagio: z.enum(["recurso", "material"]),
+  estagio: z.enum(["recurso", "material", "servico"]),
   base: z.enum(BASES_DE_CALCULO),
   condicao: condicaoSchema.nullable(),
   prioridade: z.number().int("Use um número inteiro.").min(0, "Mínimo 0.").max(10_000, "Máximo 10000."),

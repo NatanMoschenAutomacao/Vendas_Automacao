@@ -20,6 +20,7 @@ export const itemSchema = z.object({
   descricao: z.string().trim().min(2, "Informe a descrição.").max(300, "Use no máximo 300 caracteres."),
   unidade: z.string().trim().min(1, "Informe a unidade.").max(10, "Use no máximo 10 caracteres."),
   fracionavel: z.boolean(),
+  grupoComercial: z.enum(["MATERIAL", "SOFTWARE"], "Grupo comercial inválido."),
   codigoFabricante: opcional(80),
   fabricante: opcional(120),
   modelo: opcional(120),

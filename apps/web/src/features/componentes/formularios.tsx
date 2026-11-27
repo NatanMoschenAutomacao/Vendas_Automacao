@@ -50,7 +50,13 @@ export function FormItem({
           <Input name="modelo" defaultValue={inicial?.modelo ?? ""} maxLength={120} />
         </Campo>
       </div>
-      <div className="grid gap-4 @lg:grid-cols-2">
+      <div className="grid gap-4 @lg:grid-cols-3">
+        <Campo rotulo="Grupo comercial" erro={e.grupoComercial} ajuda="Define descontos e impostos aplicáveis.">
+          <Select name="grupoComercial" defaultValue={inicial?.grupoComercial ?? "MATERIAL"}>
+            <option value="MATERIAL">Material</option>
+            <option value="SOFTWARE">Software</option>
+          </Select>
+        </Campo>
         <Campo rotulo="Fornecedor" erro={e.fornecedor}>
           <Input name="fornecedor" defaultValue={inicial?.fornecedor ?? ""} maxLength={120} />
         </Campo>
@@ -122,8 +128,9 @@ export function FormImportacao() {
     >
       <p className="text-sm text-gray-500">
         Copie as linhas da planilha (com a linha de títulos) e cole abaixo. Colunas: <code>codigo</code>, <code>descricao</code>, <code>unidade</code> e, se quiser,{" "}
-        <code>fabricante</code>, <code>codigo_fabricante</code>, <code>modelo</code>, <code>fornecedor</code>, <code>categoria</code>, <code>fracionavel</code> (sim/não). Itens com
-        código já cadastrado são atualizados.
+        <code>fabricante</code>, <code>codigo_fabricante</code>, <code>modelo</code>, <code>fornecedor</code>, <code>categoria</code>, <code>fracionavel</code> (sim/não), <code>grupo</code> (material/software) e os preços{" "}
+        <code>custo</code>, <code>venda</code> e <code>modo</code> (venda fixa ou custo + regra). Itens com código já cadastrado são atualizados; um preço informado vira um novo
+        registro no histórico, vigente a partir de hoje.
       </p>
       <Textarea name="planilha" aria-label="Planilha" rows={8} className="font-mono text-xs" required />
       <CaixaDeSelecao name="isDemo" rotulo="Marcar itens novos como DEMO" />

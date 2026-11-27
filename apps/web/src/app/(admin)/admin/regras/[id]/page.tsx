@@ -9,7 +9,7 @@ import { salvarRegra } from "@/features/regras/actions";
 import { AcoesDaRegra } from "@/features/regras/acoes";
 import { carregarDono, carregarOpcoesDoEditor, donoDoBanco } from "@/features/regras/dados";
 import { EditorDeRegra } from "@/features/regras/editor";
-import { efeitoSchema, ROTULO_DONO, type DadosDaRegra } from "@/features/regras/schema";
+import { efeitoSchema, ESTAGIO_DO_BANCO, ROTULO_DONO, type DadosDaRegra } from "@/features/regras/schema";
 import { Badge, CabecalhoDePagina, Card, Mensagem } from "@/ui/card";
 
 export const metadata: Metadata = { title: "Regra" };
@@ -32,7 +32,7 @@ export default async function PaginaDaRegra({ params, searchParams }: PageProps<
     codigo: r.codigo,
     nome: r.nome,
     descricao: r.descricao,
-    estagio: r.estagio === "RECURSO" ? "recurso" : "material",
+    estagio: ESTAGIO_DO_BANCO[r.estagio],
     base: r.base as DadosDaRegra["base"],
     condicao: (r.condicao ?? null) as Condicao | null,
     prioridade: r.prioridade,
@@ -69,6 +69,7 @@ export default async function PaginaDaRegra({ params, searchParams }: PageProps<
           comuns={ctx.comuns}
           itens={opcoes.itens}
           recursos={opcoes.recursos}
+          servicos={opcoes.servicos}
           salvar={salvarRegra.bind(null, null, r.id)}
         />
       </Card>

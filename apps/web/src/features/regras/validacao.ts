@@ -7,6 +7,7 @@ export interface ContextoDaRegra {
   comuns: DescricaoDeVariavel[];
   itens: ReadonlySet<string>;
   recursos: ReadonlySet<string>;
+  servicos?: ReadonlySet<string>;
 }
 
 function validarFormula(texto: string, nomes: ReadonlySet<string>): string | null {
@@ -25,8 +26,8 @@ function validarFormula(texto: string, nomes: ReadonlySet<string>): string | nul
 export function validarRegra(d: DadosDaRegra, ctx: ContextoDaRegra): Record<string, string> {
   const erros: Record<string, string> = {};
   if (!BASES_POR_DONO[ctx.dono].includes(d.base)) erros.base = "Essa base não se aplica a este dono.";
-  if ((ctx.dono === "controlador" || d.base === "por_controlador") && d.estagio !== "material")
-    erros.estagio = "Regras por controlador são de material: os recursos são calculados antes da escolha do controlador.";
+  if ((ctx.dono === "controlador" || d.base === "por_controlador") && d.estagio === "recurso")
+    erros.estagio = "Regras por controlador são de material ou serviço: os recursos são calculados antes da escolha do controlador.";
   const variaveis = variaveisDaRegra(ctx.comuns, ctx.dono, d.base);
   const nomes = new Set(variaveis.map((v) => v.nome));
   if (d.condicao) {
@@ -38,7 +39,11 @@ export function validarRegra(d: DadosDaRegra, ctx: ContextoDaRegra): Record<stri
     const erro = (m: string) => (erros[chave] ??= m);
     if (d.estagio === "recurso" && ef.acao !== "recurso") erro("Regras de recurso só geram recursos de automação.");
     if (d.estagio === "material" && ef.acao === "recurso") erro("Recursos de automação ficam em regras do estágio Recurso.");
-    if (ef.acao === "recurso") {
+    if (d.estagio === "material" && ef.acao === "servico") erro("Serviços ficam em regras do estágio Serviço.");
+    if (d.estagio === "servico" && ef.acao !== "servico") erro("Regras de serviço só incluem serviços.");
+    if (ef.acao === "servico") {
+      if (!ctx.servicos?.has(ef.servicoId)) erro("Serviço não encontrado.");
+    } else if (ef.acao === "recurso") {
       if (!ctx.recursos.has(ef.tipoRecursoId)) erro("Tipo de recurso não encontrado.");
     } else {
       if (!ctx.itens.has(ef.itemId)) erro("Item não encontrado no catálogo.");

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Badge } from "@/ui/card";
-import { ROTULO_BASE } from "./schema";
+import { ESTAGIO_DO_BANCO, ROTULO_BASE, ROTULO_ESTAGIO } from "./schema";
 import { AcoesDaRegra } from "./acoes";
 import type { BaseDeCalculo } from "@zanatta/engine";
 
@@ -8,7 +8,7 @@ export interface RegraNaLista {
   id: string;
   codigo: string;
   nome: string;
-  estagio: "RECURSO" | "MATERIAL";
+  estagio: "RECURSO" | "MATERIAL" | "SERVICO";
   base: string;
   prioridade: number;
   ativo: boolean;
@@ -34,7 +34,7 @@ export function ListaDeRegras({ regras, vazio, rotulo }: { regras: RegraNaLista[
               {r.condicao ? " · com condição" : ""}
             </p>
           </div>
-          <Badge tom={r.estagio === "RECURSO" ? "marca" : "neutro"}>{r.estagio === "RECURSO" ? "Recurso" : "Material"}</Badge>
+          <Badge tom={r.estagio === "RECURSO" ? "marca" : r.estagio === "SERVICO" ? "aviso" : "neutro"}>{ROTULO_ESTAGIO[ESTAGIO_DO_BANCO[r.estagio]]}</Badge>
           {!r.ativo && <Badge>Inativa</Badge>}
           {r.isDemo && <Badge tom="demo">DEMO</Badge>}
           <AcoesDaRegra id={r.id} nome={r.nome} ativo={r.ativo} />
