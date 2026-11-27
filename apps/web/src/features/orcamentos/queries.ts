@@ -44,7 +44,7 @@ export async function obterOrcamento(id: string) {
     where: { id, ...filtroDeAcesso(u) },
     include: {
       vendedor: { select: { nome: true } },
-      revisoes: { orderBy: { numero: "desc" }, take: 1 },
+      revisoes: { orderBy: { numero: "desc" }, take: 1, include: { emissao: { select: { emitidoEm: true } } } },
     },
   });
   if (!o) return null;

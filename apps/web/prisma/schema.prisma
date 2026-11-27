@@ -33,6 +33,7 @@ model Usuario {
 
   auditorias RegistroDeAuditoria[]
   orcamentos Orcamento[]
+  emissoes   Emissao[]
 
   @@map("usuarios")
 }
@@ -122,6 +123,7 @@ model Equipamento {
   itensDeKit         ItemDeKit[]
   imagensInterativas ImagemInterativa[]
   regras             Regra[]
+  modelosDeTexto ModeloDeTexto[]
 
   @@index([categoriaId, ordem])
   @@map("equipamentos")
@@ -174,6 +176,7 @@ model Modelo {
   perguntas  Pergunta[]
   itensDeKit ItemDeKit[]
   regras     Regra[]
+  modelosDeTexto ModeloDeTexto[]
   /// Controladores que declaram compatibilidade com este modelo (Fase 07).
   controladores Controlador[] @relation("ModelosCompativeis")
 
@@ -285,6 +288,7 @@ model Revisao {
   schemaVersion Int       @default(1)
   salvoEm       DateTime  @updatedAt
   criadoEm      DateTime  @default(now())
+  emissao       Emissao?
 
   @@unique([orcamentoId, numero])
   @@map("revisoes")
@@ -400,6 +404,7 @@ model TipoDePainel {
   atualizadoEm DateTime @updatedAt
 
   regras Regra[]
+  modelosDeTexto ModeloDeTexto[]
 
   @@map("tipos_de_painel")
 }
@@ -567,6 +572,7 @@ model Controlador {
   saidas             SaidaFuncional[]
   modelosCompativeis Modelo[]               @relation("ModelosCompativeis")
   regras             Regra[]
+  modelosDeTexto ModeloDeTexto[]
 
   @@map("controladores")
 }
@@ -679,4 +685,48 @@ model Servico {
   atualizadoEm DateTime @updatedAt
 
   @@map("servicos")
+}
+
+/* ───────────── Fase 10: documentos ───────────── */
+
+/// Trecho do descritivo técnico com variáveis e condição de uso.
+model ModeloDeTexto {
+  id             String         @id @default(uuid()) @db.Uuid
+  /// objeto, equipamentos, paineis, automacao, servicos, observacoes (SECOES_DO_DESCRITIVO do motor).
+  secao          String
+  donoTipo       DonoDeRegra
+  equipamentoId  String?        @db.Uuid
+  equipamento    Equipamento?   @relation(fields: [equipamentoId], references: [id], onDelete: Cascade)
+  modeloId       String?        @db.Uuid
+  modelo         Modelo?        @relation(fields: [modeloId], references: [id], onDelete: Cascade)
+  tipoDePainelId String?        @db.Uuid
+  tipoDePainel   TipoDePainel?  @relation(fields: [tipoDePainelId], references: [id], onDelete: Cascade)
+  controladorId  String?        @db.Uuid
+  controlador    Controlador?   @relation(fields: [controladorId], references: [id], onDelete: Cascade)
+  texto          String
+  condicao       Json?
+  ordem          Int            @default(0)
+  ativo          Boolean        @default(true)
+  isDemo         Boolean        @default(false)
+  criadoEm       DateTime       @default(now())
+  atualizadoEm   DateTime       @updatedAt
+
+  @@index([secao, ordem])
+  @@map("modelos_de_texto")
+}
+
+/// Emissão de uma revisão: congelada, nunca recalculada.
+model Emissao {
+  id           String   @id @default(uuid()) @db.Uuid
+  revisaoId    String   @unique @db.Uuid
+  revisao      Revisao  @relation(fields: [revisaoId], references: [id], onDelete: Cascade)
+  emitidoEm    DateTime @default(now())
+  emitidoPorId String?  @db.Uuid
+  emitidoPor   Usuario? @relation(fields: [emitidoPorId], references: [id], onDelete: SetNull)
+  /// Configuração, snapshot da biblioteca e resultado calculado no momento da emissão.
+  configuracao Json
+  snapshot     Json
+  resultado    Json
+
+  @@map("emissoes")
 }

@@ -5,6 +5,7 @@ import { calcularEstrutura, contextoDeEstrutura } from "./estrutura/estrutura";
 import { calcularMateriais } from "./materiais/motor";
 import { calcularControladores } from "./controladores/controladores";
 import { calcularPrecos } from "./precos/precos";
+import { calcularDescritivo } from "./descritivo/descritivo";
 import type { ResultadoDosControladores } from "./controladores/tipos";
 import type { LinhaDeMaterial } from "./materiais/tipos";
 import {
@@ -140,6 +141,10 @@ export function calcular(
   const { precos, pendencias: dosPrecos } = calcularPrecos(config, snapshot, materiais);
   pendencias.push(...dosPrecos);
 
+  // Estágio 8: descritivo técnico.
+  const { descritivo, pendencias: doDescritivo } = calcularDescritivo(config, snapshot, contextos, { ...doProjeto, "projeto.ambientes": config.ambientes?.length ?? 0 });
+  pendencias.push(...doDescritivo);
+
   for (const inst of config.instancias) {
     if (!Number.isInteger(inst.quantidade) || inst.quantidade < 1) {
       pendencias.push({
@@ -166,5 +171,5 @@ export function calcular(
       a.mensagem.localeCompare(b.mensagem),
   );
 
-  return { pendencias, perguntas, estrutura, materiais, controladores, precos, estagios: [...ESTAGIOS] };
+  return { pendencias, perguntas, estrutura, materiais, controladores, precos, descritivo, estagios: [...ESTAGIOS] };
 }

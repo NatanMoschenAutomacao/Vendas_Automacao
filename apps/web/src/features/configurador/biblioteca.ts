@@ -1,5 +1,5 @@
 import "server-only";
-import type { Condicao, ControladorNoSnapshot, Derivacao, EquipamentoNoSnapshot, RegraNoSnapshot, SnapshotDaBiblioteca, ValorDeResposta } from "@zanatta/engine";
+import type { Condicao, ControladorNoSnapshot, Derivacao, EquipamentoNoSnapshot, ModeloDeTextoNoSnapshot, RegraNoSnapshot, SnapshotDaBiblioteca, ValorDeResposta } from "@zanatta/engine";
 import { donoDoBanco } from "@/features/regras/dados";
 import { efeitoSchema, ESTAGIO_DO_BANCO } from "@/features/regras/schema";
 import { lerReservaPadrao } from "@/features/configuracoes/dados";
@@ -23,7 +23,7 @@ function derivacao(tipo: keyof typeof TIPO | null, porGrupo: number | null): Der
  * mas o catálogo do vendedor só lista os ativos.
  */
 export async function carregarBibliotecaDoConfigurador({ verCusto }: { verCusto: boolean }): Promise<BibliotecaDoConfigurador> {
-  const [categorias, equipamentos, kits, imagens, tiposDePainel, funcoes, itens, tiposDeRecurso, regras, controladores, cartoes, reservaPadrao, comercial] = await Promise.all([
+  const [categorias, equipamentos, kits, imagens, tiposDePainel, funcoes, itens, tiposDeRecurso, regras, controladores, cartoes, reservaPadrao, comercial, textos] = await Promise.all([
     db.categoria.findMany({
       where: { ativo: true },
       orderBy: ordemPadrao,
@@ -76,6 +76,7 @@ export async function carregarBibliotecaDoConfigurador({ verCusto }: { verCusto:
     db.cartaoDeExpansao.findMany({ include: { item: { select: { codigo: true, descricao: true } }, recursos: true } }),
     lerReservaPadrao(),
     carregarComercialDoSnapshot(),
+    db.modeloDeTexto.findMany({ where: { ativo: true }, orderBy: [{ secao: "asc" }, { ordem: "asc" }, { criadoEm: "asc" }] }),
   ]);
 
   const TIPO_CONTROLADOR = { CONVENCIONAL: "convencional", DIGITAL: "digital", CLP: "clp", IRRIGACAO: "irrigacao", IHM: "ihm" } as const;
@@ -230,6 +231,15 @@ export async function carregarBibliotecaDoConfigurador({ verCusto }: { verCusto:
         ]),
       ),
       reservaPadrao,
+      modelosDeTexto: textos.map((t) => ({
+        id: t.id,
+        secao: t.secao as ModeloDeTextoNoSnapshot["secao"],
+        dono: donoDoBanco(t),
+        texto: t.texto,
+        condicao: (t.condicao ?? null) as Condicao | null,
+        ordem: t.ordem,
+        ativo: t.ativo,
+      })),
     }),
   };
 }
