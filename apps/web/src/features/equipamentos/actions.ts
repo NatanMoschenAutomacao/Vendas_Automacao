@@ -198,12 +198,14 @@ export async function excluirEquipamento(id: string): Promise<EstadoDoFormulario
   const u = await exigirPermissao(ACAO);
   idSchema.parse(id);
   const antes = await db.$transaction(async (tx) => {
-    const antes = await tx.equipamento.findUniqueOrThrow({ where: { id }, include: { definicoes: true, modelos: true } });
+    const antes = await tx.equipamento.findUniqueOrThrow({ where: { id }, include: { definicoes: true, modelos: true, imagensInterativas: true } });
     await tx.equipamento.delete({ where: { id } });
     await auditar(tx, { usuarioId: u.id, acao: "excluir", entidade: "equipamento", entidadeId: id, antes });
     return antes;
   });
-  const imagens = new Set([antes.imagemId, ...antes.modelos.map((m) => m.imagemId)].filter((x): x is string => !!x));
+  const imagens = new Set(
+    [antes.imagemId, ...antes.modelos.map((m) => m.imagemId), ...antes.imagensInterativas.map((i) => i.imagemId)].filter((x): x is string => !!x),
+  );
   for (const img of imagens) await limparImagemOrfa(img);
   revalidar();
   return { ok: true };

@@ -1,0 +1,56 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { ArrowLeft, Pencil } from "lucide-react";
+import { exigirPermissaoNaPagina } from "@/server/auth/dal";
+import { obterOrcamento } from "@/features/orcamentos/queries";
+import { ROTULO_STATUS } from "@/features/orcamentos/schema";
+import { AcoesDoOrcamento } from "@/features/orcamentos/acoes";
+import { carregarBibliotecaDoConfigurador } from "@/features/configurador/biblioteca";
+import { Configurador } from "@/features/configurador/configurador";
+import { Badge, CabecalhoDePagina } from "@/ui/card";
+
+export const metadata: Metadata = { title: "Configurador" };
+
+export default async function PaginaDoConfigurador({ params }: PageProps<"/orcamentos/[id]">) {
+  await exigirPermissaoNaPagina("orcamento:ver");
+  const { id } = await params;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
+  const [o, biblioteca] = await Promise.all([obterOrcamento(id), carregarBibliotecaDoConfigurador()]);
+  if (!o) notFound();
+  const editavel = o.status === "RASCUNHO";
+  return (
+    <>
+      <Link href="/" className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-grafite-800">
+        <ArrowLeft className="size-4" /> Orçamentos
+      </Link>
+      <CabecalhoDePagina
+        titulo={`${o.cliente} · ${o.projeto}`}
+        descricao={`Orçamento ${o.numero}${o.cidade ? ` · ${o.cidade}${o.uf ? `/${o.uf}` : ""}` : ""} · ${o.vendedor.nome}`}
+        acoes={
+          <div className="flex items-center gap-2">
+            <Badge>{ROTULO_STATUS[o.status]}</Badge>
+            {editavel && (
+              <>
+                <Link
+                  href={`/orcamentos/${o.id}/dados`}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-grafite-800 hover:bg-gray-50"
+                >
+                  <Pencil className="size-3.5" /> Dados básicos
+                </Link>
+                <AcoesDoOrcamento id={o.id} numero={o.numero} voltarAoExcluir />
+              </>
+            )}
+          </div>
+        }
+      />
+      <Configurador
+        orcamentoId={o.id}
+        editavel={editavel}
+        biblioteca={biblioteca}
+        inicial={o.configuracao}
+        salvoEm={o.revisao?.salvoEm.toISOString() ?? null}
+      />
+    </>
+  );
+}

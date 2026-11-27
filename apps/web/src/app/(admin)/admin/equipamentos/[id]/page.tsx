@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { db } from "@/server/db";
 import { notFound } from "next/navigation";
 import { AlertTriangle, ArrowLeft, ImageOff } from "lucide-react";
 import { formatarAtributo, type TipoDeDado } from "@zanatta/engine";
@@ -41,11 +42,11 @@ const ABAS = [
   { id: "modelos", titulo: "Modelos" },
   { id: "perguntas", titulo: "Perguntas" },
   { id: "imagem", titulo: "Imagem" },
+  { id: "imagens-interativas", titulo: "Imagens interativas" },
 ] as const;
 
 /** Abas que dependem das próximas fases aparecem desabilitadas. */
 const ABAS_FUTURAS = [
-  { titulo: "Imagens interativas", fase: 4 },
   { titulo: "Materiais e recursos", fase: 6 },
   { titulo: "Controladores", fase: 7 },
   { titulo: "Preços", fase: 9 },
@@ -106,6 +107,7 @@ export default async function PaginaEquipamento({ params, searchParams }: PagePr
       {aba === "caracteristicas" && <AbaCaracteristicas e={e} />}
       {aba === "modelos" && <AbaModelos e={e} />}
       {aba === "perguntas" && <AbaPerguntas e={e} />}
+      {aba === "imagens-interativas" && <AbaImagensInterativas equipamentoId={e.id} />}
       {aba === "imagem" && (
         <Card className="max-w-4xl p-6">
           <FormImagem
@@ -298,5 +300,34 @@ async function AbaPerguntas({ e }: { e: Equip }) {
         />
       </Card>
     </div>
+  );
+}
+
+async function AbaImagensInterativas({ equipamentoId }: { equipamentoId: string }) {
+  const imagens = await db.imagemInterativa.findMany({
+    where: { equipamentoId },
+    orderBy: { nome: "asc" },
+    include: { _count: { select: { hotspots: true } } },
+  });
+  return (
+    <Card className="max-w-4xl overflow-hidden">
+      <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+        <p className="text-sm text-gray-500">Aparecem no painel do equipamento, no configurador do vendedor.</p>
+        <Link href="/admin/imagens-interativas" className="text-sm font-medium text-marca-700 hover:underline">
+          Nova imagem interativa
+        </Link>
+      </div>
+      {imagens.length === 0 && <p className="px-4 py-6 text-sm text-gray-500">Nenhuma imagem interativa ligada a este equipamento.</p>}
+      {imagens.map((i) => (
+        <Link
+          key={i.id}
+          href={`/admin/imagens-interativas/${i.id}`}
+          className="flex items-center justify-between border-b border-gray-100 px-4 py-3 text-sm last:border-0 hover:bg-gray-50"
+        >
+          <span className={i.ativo ? "font-medium text-grafite-800" : "text-gray-400 line-through"}>{i.nome}</span>
+          <span className="text-xs text-gray-500">{i._count.hotspots} área(s)</span>
+        </Link>
+      ))}
+    </Card>
   );
 }
