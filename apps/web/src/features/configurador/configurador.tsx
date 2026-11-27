@@ -39,6 +39,7 @@ import { PainelDeEstrutura, PainelDeGrupos, ResumoDaEstrutura } from "./estrutur
 import { PainelDeMateriais } from "./materiais";
 import { PainelDeControladores } from "./controladores";
 import { PainelDePrecos, type PermissoesComerciais } from "./precos";
+import { PainelDoDescritivo } from "./descritivo";
 import type {
   BibliotecaDoConfigurador,
   CategoriaDoConfigurador,
@@ -77,7 +78,7 @@ export function Configurador({
   const [selecionada, setSelecionada] = useState<string | null>(inicial.instancias[0]?.id ?? null);
   const [categoriaAtual, setCategoriaAtual] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
-  const [aba, setAba] = useState<"itens" | "estrutura" | "grupos" | "controladores" | "materiais" | "precos">("itens");
+  const [aba, setAba] = useState<"itens" | "estrutura" | "grupos" | "controladores" | "materiais" | "precos" | "descritivo">("itens");
   const [salvamento, setSalvamento] = useState<EstadoDoSalvamento>({ tipo: "salvo", em: salvoEm ? new Date(salvoEm) : null });
 
   const resultado = useMemo(() => calcular(config, snapshot), [config, snapshot]);
@@ -238,6 +239,7 @@ export function Configurador({
     const controlador = config.controladores?.find((x) => x.id === id);
     if (controlador) return { nome: controlador.nome, aba: "controladores" };
     if (config.servicos?.some((x) => x.id === id) || config.comercial?.ajustes?.some((x) => x.id === id)) return { nome: "Preços", aba: "precos" };
+    if (config.descritivo?.edicoes?.[id] || resultado.descritivo.some((x) => x.paragrafos.some((p) => p.chave === id || p.modeloId === id))) return { nome: "Descritivo", aba: "descritivo" };
     const linha = resultado.precos.linhas.find((l) => l.itemId === id || l.servicoId === id);
     if (linha) return { nome: linha.codigo, aba: "precos" };
     return null;
@@ -313,6 +315,7 @@ export function Configurador({
             ["controladores", "Controladores"],
             ["materiais", "Materiais e I/O"],
             ["precos", "Preços"],
+            ["descritivo", "Descritivo"],
           ] as const
         ).map(([id, titulo]) => (
           <button
@@ -374,6 +377,7 @@ export function Configurador({
       {aba === "precos" && (
         <PainelDePrecos config={config} mudar={mudar} biblioteca={biblioteca} precos={resultado.precos} editavel={editavel} comercial={comercial} />
       )}
+      {aba === "descritivo" && <PainelDoDescritivo descritivo={resultado.descritivo} mudar={mudar} editavel={editavel} />}
       {aba !== "itens" && cartaoDePendencias}
 
       <div className={cn("grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,5fr)_minmax(0,4fr)]", aba !== "itens" && "xl:grid-cols-1 2xl:grid-cols-1")}>

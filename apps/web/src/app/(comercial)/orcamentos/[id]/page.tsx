@@ -10,6 +10,8 @@ import { AcoesDoOrcamento } from "@/features/orcamentos/acoes";
 import { carregarBibliotecaDoConfigurador } from "@/features/configurador/biblioteca";
 import { Configurador } from "@/features/configurador/configurador";
 import { lerLimiteDeDesconto } from "@/features/precos/dados";
+import { dataBR } from "@/features/precos/formato";
+import { SituacaoDoOrcamento } from "@/features/orcamentos/situacao";
 import { Badge, CabecalhoDePagina } from "@/ui/card";
 
 export const metadata: Metadata = { title: "Configurador" };
@@ -50,6 +52,14 @@ export default async function PaginaDoConfigurador({ params }: PageProps<"/orcam
             )}
           </div>
         }
+      />
+      <SituacaoDoOrcamento
+        id={o.id}
+        status={o.status}
+        revisao={o.revisao?.numero ?? 1}
+        emitidoEm={o.revisao?.emissao ? dataBR(o.revisao.emissao.emitidoEm) : null}
+        podeValidar={pode(usuario.perfil, "orcamento:validar")}
+        verCusto={pode(usuario.perfil, "precos:ver-custo")}
       />
       <Configurador
         orcamentoId={o.id}

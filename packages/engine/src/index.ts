@@ -19,3 +19,4 @@ export * from "./controladores/expansao";
 export * from "./precos/tipos";
 export * from "./precos/precos";
 export * from "./precos/edicao";
+export * from "./descritivo/descritivo";

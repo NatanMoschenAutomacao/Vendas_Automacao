@@ -11,6 +11,8 @@ export const ACOES = [
   "orcamento:ver",
   /** Ver e editar orçamentos de todos os vendedores. */
   "orcamento:ver-todos",
+  /** Validar tecnicamente, devolver ao rascunho e ver o orçamento interno. */
+  "orcamento:validar",
   "biblioteca:ver",
   "biblioteca:gerenciar",
   "precos:ver-custo",

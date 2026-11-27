@@ -141,6 +141,11 @@ export const configuracaoSchema = z.object({
       validade: textoComercial,
     })
     .optional(),
+  descritivo: z
+    .object({
+      edicoes: z.record(z.string().max(200), z.object({ texto: z.string().max(4000), base: z.string().max(8000) })).optional(),
+    })
+    .optional(),
 });
 
 export const CONFIGURACAO_VAZIA = { schemaVersion: 1 as const, instancias: [] };

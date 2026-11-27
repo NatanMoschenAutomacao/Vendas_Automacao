@@ -55,6 +55,6 @@ export const SECOES_ADMIN: SecaoAdmin[] = [
   { titulo: "Cartões de expansão", descricao: "Cartões, barramento e compatibilidade com CLPs.", href: "/admin/cartoes", fase: 8 },
   { titulo: "Preços", descricao: "Preço vigente de cada item, itens sem preço e histórico.", href: "/admin/precos", fase: 9 },
   { titulo: "Serviços", descricao: "Montagem, programação, deslocamento e outros serviços.", href: "/admin/servicos", fase: 9 },
-  { titulo: "Modelos de texto", descricao: "Trechos do descritivo técnico.", fase: 10 },
+  { titulo: "Textos do descritivo", descricao: "Modelos de texto do descritivo técnico.", href: "/admin/modelos-de-texto", fase: 10 },
   { titulo: "Configurações gerais", descricao: "Reserva técnica, regra comercial, impostos e limite de desconto.", href: "/admin/configuracoes", fase: 8 },
 ];

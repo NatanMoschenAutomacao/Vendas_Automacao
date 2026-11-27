@@ -12,6 +12,7 @@ import type { Pergunta, PerguntaDeModelo, ValorDeResposta } from "./perguntas/ti
 import type { ResultadoDasPerguntas } from "./perguntas/aplicabilidade";
 import type { ResultadoDaEstrutura } from "./estrutura/estrutura";
 import type { AjusteManual, ItemNoSnapshot, RegraNoSnapshot, ResultadoDeMateriais, ServicoNoSnapshot, TipoDeRecursoNoSnapshot } from "./materiais/tipos";
+import type { EdicaoDoDescritivo, ModeloDeTextoNoSnapshot, SecaoGerada } from "./descritivo/descritivo";
 import type { DadosComerciais, Imposto, PrecoNoSnapshot, RegraComercial, ResultadoDePrecos, ServicoNoProjeto } from "./precos/tipos";
 import type { CartaoNoSnapshot, ControladorNoProjeto, ControladorNoSnapshot, ReservaTecnica, ResultadoDosControladores } from "./controladores/tipos";
 
@@ -36,6 +37,8 @@ export interface ConfiguracaoDoProjeto {
   servicos?: ServicoNoProjeto[];
   /** Descontos, acréscimos e condições comerciais (Fase 09). */
   comercial?: DadosComerciais;
+  /** Trechos do descritivo editados à mão, por chave do trecho (Fase 10). */
+  descritivo?: { edicoes?: Record<string, EdicaoDoDescritivo> };
 }
 
 export interface Ambiente {
@@ -158,6 +161,8 @@ export interface SnapshotDaBiblioteca {
   impostos?: Imposto[];
   /** O servidor removeu custos e regra comercial (perfil sem "precos:ver-custo"). */
   custosOcultos?: boolean;
+  /** Modelos de texto do descritivo técnico (Fase 10). */
+  modelosDeTexto?: ModeloDeTextoNoSnapshot[];
 }
 
 export type Gravidade = "informativa" | "advertencia" | "impeditiva";
@@ -182,6 +187,8 @@ export interface ResultadoDoCalculo {
   controladores: ResultadoDosControladores;
   /** Preços, totais, descontos e impostos (Fase 09). */
   precos: ResultadoDePrecos;
+  /** Descritivo técnico montado a partir dos modelos de texto (Fase 10). */
+  descritivo: SecaoGerada[];
   /** Estágios executados, na ordem. Útil para depuração e testes. */
   estagios: NomeDoEstagio[];
 }
