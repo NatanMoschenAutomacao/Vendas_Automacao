@@ -8,6 +8,7 @@ import { db } from "@/server/db";
 import { exigirPermissao } from "@/server/auth/dal";
 import { auditar } from "@/server/audit";
 import { armazenamento } from "@/server/arquivos/armazenamento";
+import { limparImagemOrfa } from "@/server/arquivos/imagens";
 import { EXTENSAO, validarImagem } from "@/server/arquivos/imagem";
 import type { EstadoDoFormulario } from "@/ui/form-status";
 import { mover } from "@/features/categorias/arvore";
@@ -197,12 +198,14 @@ export async function excluirEquipamento(id: string): Promise<EstadoDoFormulario
   const u = await exigirPermissao(ACAO);
   idSchema.parse(id);
   const antes = await db.$transaction(async (tx) => {
-    const antes = await tx.equipamento.findUniqueOrThrow({ where: { id }, include: { definicoes: true, modelos: true } });
+    const antes = await tx.equipamento.findUniqueOrThrow({ where: { id }, include: { definicoes: true, modelos: true, imagensInterativas: true } });
     await tx.equipamento.delete({ where: { id } });
     await auditar(tx, { usuarioId: u.id, acao: "excluir", entidade: "equipamento", entidadeId: id, antes });
     return antes;
   });
-  const imagens = new Set([antes.imagemId, ...antes.modelos.map((m) => m.imagemId)].filter((x): x is string => !!x));
+  const imagens = new Set(
+    [antes.imagemId, ...antes.modelos.map((m) => m.imagemId), ...antes.imagensInterativas.map((i) => i.imagemId)].filter((x): x is string => !!x),
+  );
   for (const img of imagens) await limparImagemOrfa(img);
   revalidar();
   return { ok: true };
@@ -560,15 +563,4 @@ export async function removerImagem(alvo: Alvo, id: string) {
   });
   if (anterior) await limparImagemOrfa(anterior);
   revalidar(equipamentoId);
-}
-
-/** Apaga a imagem do banco e do armazenamento se nenhum cadastro a usa mais. */
-async function limparImagemOrfa(imagemId: string) {
-  const [eqs, mods] = await Promise.all([
-    db.equipamento.count({ where: { imagemId } }),
-    db.modelo.count({ where: { imagemId } }),
-  ]);
-  if (eqs + mods > 0) return;
-  const img = await db.imagem.delete({ where: { id: imagemId } }).catch(() => null);
-  if (img) await armazenamento().remover(img.chave).catch(() => undefined);
 }

@@ -39,3 +39,63 @@ describe("calcular", () => {
     expect(r1.pendencias).toHaveLength(2);
   });
 });
+
+describe("calcular com perguntas (Fase 04)", () => {
+  const snap = {
+    versao: "t",
+    equipamentos: {
+      e1: {
+        id: "e1",
+        nome: "Exaustor",
+        ativo: true,
+        perguntas: [
+          {
+            chave: "tipo_controle",
+            texto: "Tipo de controle",
+            tipo: "SELECAO_UNICA" as const,
+            obrigatoria: true,
+            ordem: 0,
+            opcoes: [
+              { valor: "simultaneo", rotulo: "Simultâneo" },
+              { valor: "grupos", rotulo: "Por grupos" },
+            ],
+          },
+        ],
+        modelos: [{ id: "m1", nome: "Modelo 01", ativo: true, atributos: { potencia: 1.5 }, perguntas: [] }],
+      },
+    },
+  };
+  it("aponta pergunta obrigatória por instância", () => {
+    const r = calcular(
+      { schemaVersion: 1, instancias: [{ id: "i1", equipamentoId: "e1", modeloId: "m1", quantidade: 2, fornecimento: "fornecido" }] },
+      snap,
+    );
+    expect(r.pendencias).toEqual([
+      { codigo: "PERGUNTA_OBRIGATORIA", gravidade: "impeditiva", mensagem: 'Responda "Tipo de controle".', referencia: "i1" },
+    ]);
+    const ok = calcular(
+      {
+        schemaVersion: 1,
+        instancias: [
+          { id: "i1", equipamentoId: "e1", modeloId: "m1", quantidade: 2, fornecimento: "fornecido", respostas: { tipo_controle: "grupos" } },
+        ],
+      },
+      snap,
+    );
+    expect(ok.pendencias).toEqual([]);
+    expect(ok.perguntas.i1!.valores).toEqual({ tipo_controle: "grupos" });
+  });
+  it("modelo inativado ou equipamento removido viram pendência", () => {
+    const r = calcular(
+      {
+        schemaVersion: 1,
+        instancias: [
+          { id: "i1", equipamentoId: "e1", modeloId: "mX", quantidade: 1, fornecimento: "fornecido", respostas: { tipo_controle: "grupos" } },
+          { id: "i2", equipamentoId: "eX", modeloId: null, quantidade: 1, fornecimento: "fornecido" },
+        ],
+      },
+      snap,
+    );
+    expect(r.pendencias.map((p) => p.codigo)).toEqual(["EQUIPAMENTO_INDISPONIVEL", "EQUIPAMENTO_SEM_MODELO", "MODELO_INDISPONIVEL"]);
+  });
+});

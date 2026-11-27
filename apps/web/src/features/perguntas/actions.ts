@@ -82,6 +82,7 @@ export async function salvarPergunta(
         porModelo,
         modeloId: dono.modeloId,
         definicoes: eq.definicoes,
+        equipamentos: await db.equipamento.findMany({ where: { ativo: true }, select: { codigo: true, nome: true } }),
       })
     : {};
   if (Object.keys(erros).length) return { erros, mensagem: erros.geral ?? "Revise os campos destacados." };

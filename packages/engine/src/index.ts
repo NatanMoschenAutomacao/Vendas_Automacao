@@ -7,3 +7,4 @@ export * from "./regras/formula";
 export * from "./perguntas/tipos";
 export * from "./perguntas/heranca";
 export * from "./perguntas/aplicabilidade";
+export * from "./configurador/edicao";

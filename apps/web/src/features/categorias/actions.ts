@@ -136,6 +136,13 @@ export async function excluirCategoria(id: string): Promise<EstadoDoFormulario> 
   if (filhas > 0) {
     return { mensagem: "Esta categoria tem subcategorias. Mova ou exclua as subcategorias primeiro." };
   }
+  const [equipamentos, kits] = await Promise.all([
+    db.equipamento.count({ where: { categoriaId: id } }),
+    db.kit.count({ where: { categoriaId: id } }),
+  ]);
+  if (equipamentos + kits > 0) {
+    return { mensagem: "Esta categoria tem equipamentos ou kits. Mova-os para outra categoria antes de excluir." };
+  }
   await db.$transaction(async (tx) => {
     const antes = await tx.categoria.delete({ where: { id } });
     await auditar(tx, { usuarioId: u.id, acao: "excluir", entidade: "categoria", entidadeId: id, antes });

@@ -12,7 +12,7 @@ import {
   type PerguntaDeModelo,
 } from "@zanatta/engine";
 import type { DadosDaPergunta } from "./schema";
-import { variaveisDisponiveis, type DefinicaoParaVariavel } from "./variaveis";
+import { variaveisDisponiveis, type DefinicaoParaVariavel, type EquipamentoParaVariavel } from "./variaveis";
 
 export interface ContextoDeValidacao {
   dono: "equipamento" | "modelo";
@@ -23,6 +23,8 @@ export interface ContextoDeValidacao {
   /** Modelo dono, quando dono = "modelo". */
   modeloId?: string;
   definicoes: DefinicaoParaVariavel[];
+  /** Equipamentos da biblioteca, para projeto.tem(...) e projeto.quantidade(...). */
+  equipamentos?: EquipamentoParaVariavel[];
 }
 
 /** Monta a pergunta do motor a partir dos dados do formulário. */
@@ -89,7 +91,7 @@ export function validarPergunta(d: DadosDaPergunta, ordem: number, ctx: Contexto
 
   // Conjunto efetivo para checar variáveis e ciclos.
   const outras = ctx.dono === "equipamento" ? ctx.doEquipamento : resolverPerguntas(ctx.doEquipamento, ctx.porModelo.get(ctx.modeloId ?? "") ?? []).perguntas;
-  const variaveis = variaveisDisponiveis(outras.filter((p) => p.chave !== d.chave), ctx.definicoes);
+  const variaveis = variaveisDisponiveis(outras.filter((p) => p.chave !== d.chave), ctx.definicoes, ctx.equipamentos);
   const nomes = new Set(variaveis.map((v) => v.nome));
 
   if (d.tipo === "CALCULADO") {

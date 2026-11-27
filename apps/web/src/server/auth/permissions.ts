@@ -9,6 +9,8 @@ export type PerfilUsuario = (typeof PERFIS)[number];
 export const ACOES = [
   "orcamento:criar",
   "orcamento:ver",
+  /** Ver e editar orçamentos de todos os vendedores. */
+  "orcamento:ver-todos",
   "biblioteca:ver",
   "biblioteca:gerenciar",
   "precos:ver-custo",

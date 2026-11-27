@@ -1,6 +1,7 @@
 // Fase 01: usuários, categorias, configurações e auditoria.
 // Fase 02: biblioteca de equipamentos (equipamentos, características, modelos e imagens).
 // Fase 03: perguntas dinâmicas com herança equipamento → modelo e condições.
+// Fase 04: orçamentos (revisões com a configuração em JSONB), kits e imagens interativas.
 // As demais entidades entram nas fases seguintes, por migrations.
 
 generator client {
@@ -31,6 +32,7 @@ model Usuario {
   atualizadoEm        DateTime  @updatedAt
 
   auditorias RegistroDeAuditoria[]
+  orcamentos Orcamento[]
 
   @@map("usuarios")
 }
@@ -48,7 +50,9 @@ model Categoria {
   criadoEm     DateTime    @default(now())
   atualizadoEm DateTime    @updatedAt
 
-  equipamentos Equipamento[]
+  equipamentos        Equipamento[]
+  kits                Kit[]
+  imagensInterativas  ImagemInterativa[]
 
   @@index([paiId, ordem])
   @@map("categorias")
@@ -107,9 +111,11 @@ model Equipamento {
   criadoEm         DateTime          @default(now())
   atualizadoEm     DateTime          @updatedAt
 
-  definicoes DefinicaoDeAtributo[]
-  modelos    Modelo[]
-  perguntas  Pergunta[]
+  definicoes         DefinicaoDeAtributo[]
+  modelos            Modelo[]
+  perguntas          Pergunta[]
+  itensDeKit         ItemDeKit[]
+  imagensInterativas ImagemInterativa[]
 
   @@index([categoriaId, ordem])
   @@map("equipamentos")
@@ -151,7 +157,8 @@ model Modelo {
   criadoEm      DateTime    @default(now())
   atualizadoEm  DateTime    @updatedAt
 
-  perguntas Pergunta[]
+  perguntas  Pergunta[]
+  itensDeKit ItemDeKit[]
 
   @@unique([equipamentoId, codigo])
   @@index([equipamentoId, ordem])
@@ -170,8 +177,10 @@ model Imagem {
   textoAlternativo  String?
   criadoEm          DateTime @default(now())
 
-  equipamentos Equipamento[]
-  modelos      Modelo[]
+  equipamentos       Equipamento[]
+  modelos            Modelo[]
+  kits               Kit[]
+  imagensInterativas ImagemInterativa[]
 
   @@map("imagens")
 }
@@ -218,4 +227,140 @@ model Pergunta {
   @@index([equipamentoId, ordem])
   @@index([modeloId, ordem])
   @@map("perguntas")
+}
+
+enum StatusDoOrcamento {
+  RASCUNHO
+  AGUARDANDO_VALIDACAO
+  VALIDADO
+  EMITIDO
+}
+
+model Orcamento {
+  id           String            @id @default(uuid()) @db.Uuid
+  /// Número da proposta, ex.: 2026-0001.
+  numero       String            @unique
+  cliente      String
+  empresa      String?
+  projeto      String
+  cidade       String?
+  uf           String?
+  observacoes  String?
+  status       StatusDoOrcamento @default(RASCUNHO)
+  vendedorId   String            @db.Uuid
+  vendedor     Usuario           @relation(fields: [vendedorId], references: [id], onDelete: Restrict)
+  criadoEm     DateTime          @default(now())
+  atualizadoEm DateTime          @updatedAt
+
+  revisoes Revisao[]
+
+  @@index([vendedorId, atualizadoEm])
+  @@map("orcamentos")
+}
+
+/// Revisão do orçamento. A configuração (escolhas do vendedor) fica em JSONB.
+model Revisao {
+  id            String    @id @default(uuid()) @db.Uuid
+  orcamentoId   String    @db.Uuid
+  orcamento     Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
+  numero        Int
+  configuracao  Json
+  schemaVersion Int       @default(1)
+  salvoEm       DateTime  @updatedAt
+  criadoEm      DateTime  @default(now())
+
+  @@unique([orcamentoId, numero])
+  @@map("revisoes")
+}
+
+/// Conjunto padrão (kit): itens pré-selecionados com quantidade e respostas padrão.
+model Kit {
+  id           String      @id @default(uuid()) @db.Uuid
+  nome         String
+  descricao    String?
+  categoriaId  String      @db.Uuid
+  categoria    Categoria   @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+  imagemId     String?     @db.Uuid
+  imagem       Imagem?     @relation(fields: [imagemId], references: [id], onDelete: SetNull)
+  ordem        Int         @default(0)
+  ativo        Boolean     @default(true)
+  isDemo       Boolean     @default(false)
+  criadoEm     DateTime    @default(now())
+  atualizadoEm DateTime    @updatedAt
+
+  itens ItemDeKit[]
+
+  @@index([categoriaId, ordem])
+  @@map("kits")
+}
+
+model ItemDeKit {
+  id            String      @id @default(uuid()) @db.Uuid
+  kitId         String      @db.Uuid
+  kit           Kit         @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  equipamentoId String      @db.Uuid
+  equipamento   Equipamento @relation(fields: [equipamentoId], references: [id], onDelete: Cascade)
+  modeloId      String?     @db.Uuid
+  modelo        Modelo?     @relation(fields: [modeloId], references: [id], onDelete: SetNull)
+  quantidade    Int         @default(1)
+  respostas     Json        @default("{}")
+  ordem         Int         @default(0)
+
+  @@index([kitId, ordem])
+  @@map("itens_de_kit")
+}
+
+/// Imagem com áreas clicáveis (hotspots), ligada a um sistema (categoria) ou a um equipamento.
+model ImagemInterativa {
+  id            String       @id @default(uuid()) @db.Uuid
+  nome          String
+  imagemId      String       @db.Uuid
+  imagem        Imagem       @relation(fields: [imagemId], references: [id], onDelete: Restrict)
+  categoriaId   String?      @db.Uuid
+  categoria     Categoria?   @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  equipamentoId String?      @db.Uuid
+  equipamento   Equipamento? @relation(fields: [equipamentoId], references: [id], onDelete: Cascade)
+  ativo         Boolean      @default(true)
+  isDemo        Boolean      @default(false)
+  criadoEm      DateTime     @default(now())
+  atualizadoEm  DateTime     @updatedAt
+
+  hotspots Hotspot[]
+
+  @@map("imagens_interativas")
+}
+
+enum FormaDeHotspot {
+  RETANGULO
+  ELIPSE
+}
+
+enum AlvoDeHotspot {
+  EQUIPAMENTO
+  MODELO
+  KIT
+  PERGUNTA
+  OPCAO
+}
+
+model Hotspot {
+  id                 String           @id @default(uuid()) @db.Uuid
+  imagemInterativaId String           @db.Uuid
+  imagemInterativa   ImagemInterativa @relation(fields: [imagemInterativaId], references: [id], onDelete: Cascade)
+  rotulo             String
+  forma              FormaDeHotspot   @default(RETANGULO)
+  /// Posição e tamanho relativos à imagem (0 a 1).
+  x                  Float
+  y                  Float
+  largura            Float
+  altura             Float
+  alvoTipo           AlvoDeHotspot
+  /// id do equipamento, modelo ou kit; chave da pergunta para PERGUNTA/OPCAO.
+  alvoId             String
+  /// Valor da opção (OPCAO).
+  alvoValor          String?
+  ordem              Int              @default(0)
+
+  @@index([imagemInterativaId, ordem])
+  @@map("hotspots")
 }
