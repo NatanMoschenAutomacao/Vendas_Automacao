@@ -12,7 +12,7 @@ import type { Pergunta, PerguntaDeModelo, ValorDeResposta } from "./perguntas/ti
 import type { ResultadoDasPerguntas } from "./perguntas/aplicabilidade";
 import type { ResultadoDaEstrutura } from "./estrutura/estrutura";
 import type { AjusteManual, ItemNoSnapshot, RegraNoSnapshot, ResultadoDeMateriais, TipoDeRecursoNoSnapshot } from "./materiais/tipos";
-import type { ControladorNoProjeto, ControladorNoSnapshot, ResultadoDosControladores } from "./controladores/tipos";
+import type { CartaoNoSnapshot, ControladorNoProjeto, ControladorNoSnapshot, ReservaTecnica, ResultadoDosControladores } from "./controladores/tipos";
 
 export type Id = string;
 
@@ -29,6 +29,8 @@ export interface ConfiguracaoDoProjeto {
   ajustes?: AjusteManual[];
   /** Controladores escolhidos para o projeto (Fase 07). */
   controladores?: ControladorNoProjeto[];
+  /** Reserva técnica do projeto (só o administrador técnico altera). Null = padrão global. Fase 08. */
+  reserva?: ReservaTecnica | null;
 }
 
 export interface Ambiente {
@@ -141,6 +143,9 @@ export interface SnapshotDaBiblioteca {
   tiposDeRecurso?: Record<Id, TipoDeRecursoNoSnapshot>;
   regras?: RegraNoSnapshot[];
   controladores?: Record<Id, ControladorNoSnapshot>;
+  cartoes?: Record<Id, CartaoNoSnapshot>;
+  /** Reserva técnica padrão das configurações gerais. */
+  reservaPadrao?: ReservaTecnica | null;
 }
 
 export type Gravidade = "informativa" | "advertencia" | "impeditiva";

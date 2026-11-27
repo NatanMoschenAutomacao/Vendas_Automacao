@@ -8,8 +8,10 @@
  */
 import type { ConfiguracaoDoProjeto, Id, Pendencia, SnapshotDaBiblioteca } from "../types";
 import type { SinalDeIO } from "../materiais/tipos";
+import { dimensionarExpansao } from "./expansao";
 import type {
   AnaliseDeCompatibilidade,
+  ReservaTecnica,
   AnaliseDoControlador,
   ControladorNoSnapshot,
   DemandaDoControlador,
@@ -51,6 +53,8 @@ export function avaliarControlador(
   demanda: DemandaDoControlador,
   snapshot: SnapshotDaBiblioteca,
   distribuicaoEscolhida: Record<Id, Id> = {},
+  reserva: ReservaTecnica | null = null,
+  cartoesEscolhidos?: Record<Id, number>,
 ): AnaliseDeCompatibilidade & { distribuicaoDescartada: Id[] } {
   const motivos: string[] = [];
   const funcoes = snapshot.funcoes ?? {};
@@ -83,7 +87,7 @@ export function avaliarControlador(
     motivos.push(`Sem saída funcional livre para ${f?.nome ?? "a função"} (grupo ${g.nome}).`);
   }
 
-  // 2. Recursos contra o integrado (expansão chega na Fase 08).
+  // 2. Recursos: integrado + expansão por cartões, com reserva técnica (Fase 08).
   const recursos: RecursoDoControlador[] = Object.entries(demanda.recursos)
     .filter(([, q]) => q > 0)
     .map(([tipoRecursoId, necessario]) => {
@@ -97,8 +101,14 @@ export function avaliarControlador(
       };
     })
     .sort((a, b) => a.codigo.localeCompare(b.codigo));
-  for (const r of recursos) {
-    if (r.deficit > 0 && c.tipo !== "clp") motivos.push(`Faltam ${r.deficit} ${r.codigo} (precisa ${r.necessario}, tem ${r.integrado}).`);
+  const expansao = dimensionarExpansao(c, demanda.recursos, snapshot, reserva, cartoesEscolhidos);
+  if (expansao.alternativas.length === 0 && expansao.necessidade.some((n) => n.deficit > 0)) {
+    for (const n of expansao.necessidade) {
+      if (n.deficit <= 0) continue;
+      const precisa = n.reserva > 0 ? `precisa ${n.necessario} + reserva ${n.reserva}` : `precisa ${n.necessario}`;
+      motivos.push(`Faltam ${n.deficit} ${n.codigo} (${precisa}, tem ${n.integrado}).`);
+    }
+    if (expansao.motivo && (c.cartoesCompativeis ?? []).length > 0) motivos.push(expansao.motivo);
   }
 
   // 3. Compatibilidade: modelos e tensão.
@@ -116,7 +126,7 @@ export function avaliarControlador(
   if (demanda.tensao != null && c.tensoes.length > 0 && !c.tensoes.includes(demanda.tensao))
     motivos.push(`Não aceita alimentação de ${demanda.tensao} V (aceita ${c.tensoes.join(", ")} V).`);
 
-  return { controladorId: c.id, compativel: motivos.length === 0, motivos, distribuicao, recursos, semListaDeModelos, distribuicaoDescartada: descartada };
+  return { controladorId: c.id, compativel: motivos.length === 0, motivos, distribuicao, recursos, semListaDeModelos, expansao, distribuicaoDescartada: descartada };
 }
 
 export function calcularControladores(
@@ -129,6 +139,7 @@ export function calcularControladores(
   const ids = new Set(cps.map((c) => c.id));
   const grupos = config.grupos ?? [];
   const biblioteca = Object.values(snapshot.controladores ?? {}).filter((c) => c.ativo);
+  const reserva = config.reserva ?? snapshot.reservaPadrao ?? null;
 
   // Controlador responsável por cada instância: ligação direta > primeiro grupo com controlador.
   const controladorDaInstancia = new Map<Id, Id>();
@@ -181,7 +192,7 @@ export function calcularControladores(
     const alternativas = [...biblioteca]
       .sort((a, b) => a.nome.localeCompare(b.nome))
       .map((c) => {
-        const a = avaliarControlador(c, demanda, snapshot);
+        const a = avaliarControlador(c, demanda, snapshot, {}, reserva);
         return { controladorId: c.id, compativel: a.compativel, motivos: a.motivos };
       })
       .sort((a, b) => Number(b.compativel) - Number(a.compativel));
@@ -215,7 +226,7 @@ export function calcularControladores(
       });
       return base;
     }
-    const a = avaliarControlador(c, demanda, snapshot, cp.distribuicao ?? {});
+    const a = avaliarControlador(c, demanda, snapshot, cp.distribuicao ?? {}, reserva, cp.cartoes);
     if (a.distribuicaoDescartada.length)
       pendencias.push({
         codigo: "DISTRIBUICAO_DESCARTADA",
@@ -225,15 +236,20 @@ export function calcularControladores(
       });
     for (const m of a.motivos)
       pendencias.push({ codigo: "CONTROLADOR_INCOMPATIVEL", gravidade: "impeditiva", mensagem: `${cp.nome} (${c.nome}): ${m}`, referencia: cp.id });
-    for (const r of a.recursos) {
-      if (r.deficit > 0 && c.tipo === "clp")
-        pendencias.push({
-          codigo: "RECURSO_REQUER_EXPANSAO",
-          gravidade: "advertencia",
-          mensagem: `${cp.nome}: faltam ${r.deficit} ${r.codigo} no integrado. A expansão por cartões é dimensionada na Fase 08.`,
-          referencia: cp.id,
-        });
-    }
+    if (a.expansao.escolhaDescartada)
+      pendencias.push({
+        codigo: "CARTOES_DESCARTADOS",
+        gravidade: "advertencia",
+        mensagem: `A combinação de cartões escolhida em ${cp.nome} deixou de ser válida e foi descartada.`,
+        referencia: cp.id,
+      });
+    if (!a.expansao.escolhida && a.expansao.alternativas.length > 1)
+      pendencias.push({
+        codigo: "CARTOES_NAO_ESCOLHIDOS",
+        gravidade: "impeditiva",
+        mensagem: `Escolha uma das ${a.expansao.alternativas.length} combinações de cartões de ${cp.nome}.`,
+        referencia: cp.id,
+      });
     if (a.semListaDeModelos && instancias.length > 0)
       pendencias.push({
         codigo: "COMPATIBILIDADE_NAO_CADASTRADA",
@@ -249,6 +265,7 @@ export function calcularControladores(
       distribuicao: a.distribuicao,
       recursos: a.recursos,
       semListaDeModelos: a.semListaDeModelos,
+      expansao: a.expansao,
     };
   });
 

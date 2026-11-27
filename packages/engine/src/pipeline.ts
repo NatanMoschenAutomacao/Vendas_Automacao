@@ -4,6 +4,8 @@ import { avaliarPerguntas, type ResultadoDasPerguntas } from "./perguntas/aplica
 import { calcularEstrutura, contextoDeEstrutura } from "./estrutura/estrutura";
 import { calcularMateriais } from "./materiais/motor";
 import { calcularControladores } from "./controladores/controladores";
+import type { ResultadoDosControladores } from "./controladores/tipos";
+import type { LinhaDeMaterial } from "./materiais/tipos";
 import {
   ESTAGIOS,
   type ConfiguracaoDoProjeto,
@@ -19,6 +21,37 @@ import {
  * Executa os 8 estágios na ordem definida na arquitetura. Até a Fase 06 têm
  * lógica: perguntas, estrutura, recursos, materiais, ajustes e pendências.
  */
+/** Linhas dos cartões escolhidos para cada controlador. */
+function linhasDosCartoes(
+  config: ConfiguracaoDoProjeto,
+  snapshot: SnapshotDaBiblioteca,
+  resultado: ResultadoDosControladores,
+  pendencias: Pendencia[],
+): LinhaDeMaterial[] {
+  const linhas: LinhaDeMaterial[] = [];
+  for (const a of resultado.porControlador) {
+    const cp = config.controladores?.find((c) => c.id === a.id);
+    for (const { cartaoId, quantidade } of a.expansao?.escolhida?.cartoes ?? []) {
+      const cartao = snapshot.cartoes?.[cartaoId];
+      const item = cartao?.itemId ? snapshot.itens?.[cartao.itemId] : undefined;
+      if (!item?.ativo) {
+        pendencias.push({ codigo: "ITEM_INDISPONIVEL", gravidade: "impeditiva", mensagem: "O item de um cartão de expansão foi removido ou inativado.", referencia: a.id });
+        continue;
+      }
+      linhas.push({
+        chave: `cartao:c:${a.id}:${item.codigo}`,
+        itemId: item.id,
+        codigo: item.codigo,
+        descricao: item.descricao,
+        unidade: item.unidade,
+        quantidade,
+        origem: { tipo: "cartao", controladorId: a.id, painelId: cp?.painelId ?? undefined, base: "por_controlador", baseQuantidade: 1 },
+      });
+    }
+  }
+  return linhas;
+}
+
 export function calcular(
   config: ConfiguracaoDoProjeto,
   snapshot: SnapshotDaBiblioteca,
@@ -86,16 +119,21 @@ export function calcular(
   const { estrutura, pendencias: daEstrutura } = calcularEstrutura(config, snapshot);
   pendencias.push(...daEstrutura);
 
-  // Estágios 3, 5 e 6: recursos, materiais e ajustes manuais.
-  const { materiais, pendencias: dosMateriais } = calcularMateriais(config, snapshot, estrutura, contextos, {
-    ...doProjeto,
-    "projeto.ambientes": config.ambientes?.length ?? 0,
-  });
-  pendencias.push(...dosMateriais);
-
-  // Estágio 4: controladores (funções, recursos por controlador e compatibilidade).
-  const { controladores, pendencias: dosControladores } = calcularControladores(config, snapshot, materiais.sinais);
-  pendencias.push(...dosControladores);
+  // Estágios 3 a 6: recursos; controladores e cartões (entre recursos e materiais); materiais; ajustes.
+  let doEstagio4: ReturnType<typeof calcularControladores> | null = null;
+  const { materiais, pendencias: dosMateriais } = calcularMateriais(
+    config,
+    snapshot,
+    estrutura,
+    contextos,
+    { ...doProjeto, "projeto.ambientes": config.ambientes?.length ?? 0 },
+    (sinais) => {
+      doEstagio4 = calcularControladores(config, snapshot, sinais);
+      return linhasDosCartoes(config, snapshot, doEstagio4.controladores, pendencias);
+    },
+  );
+  const { controladores, pendencias: dosControladores } = doEstagio4 ?? calcularControladores(config, snapshot, materiais.sinais);
+  pendencias.push(...dosMateriais, ...dosControladores);
 
   for (const inst of config.instancias) {
     if (!Number.isInteger(inst.quantidade) || inst.quantidade < 1) {

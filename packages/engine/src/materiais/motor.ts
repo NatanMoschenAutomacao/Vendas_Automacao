@@ -58,6 +58,8 @@ export function calcularMateriais(
   estrutura: ResultadoDaEstrutura,
   contextos: ReadonlyMap<Id, Ctx>,
   ctxProjeto: Ctx,
+  /** Linhas que dependem dos recursos (cartões de expansão), calculadas entre os estágios 3 e 5. */
+  linhasAposRecursos?: (sinais: SinalDeIO[]) => LinhaDeMaterial[],
 ): { materiais: ResultadoDeMateriais; pendencias: Pendencia[] } {
   const pendencias: Pendencia[] = [];
   const itens = snapshot.itens ?? {};
@@ -280,6 +282,12 @@ export function calcularMateriais(
     porChave.set(linha.chave, linha);
   }
 
+  // Cartões de expansão escolhidos (Fase 08).
+  for (const l of linhasAposRecursos?.(sinais) ?? []) {
+    linhas.push(l);
+    porChave.set(l.chave, l);
+  }
+
   // Fornecimento do próprio equipamento (só o que a Zanatta fornece).
   for (const inst of config.instancias) {
     if (inst.fornecimento !== "fornecido") continue;
@@ -382,7 +390,7 @@ export function calcularMateriais(
         });
         continue;
       }
-      if (l.origem.tipo === "fornecimento" || l.origem.tipo === "controlador") {
+      if (l.origem.tipo === "fornecimento" || l.origem.tipo === "controlador" || l.origem.tipo === "cartao") {
         pendencias.push({
           codigo: "REMOCAO_NAO_PERMITIDA",
           gravidade: "advertencia",

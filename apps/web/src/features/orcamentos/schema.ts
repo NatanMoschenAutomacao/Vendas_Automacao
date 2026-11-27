@@ -87,9 +87,17 @@ export const configuracaoSchema = z.object({
         controladorId: z.uuid().nullable(),
         painelId: idLocal.nullable(),
         distribuicao: z.record(idLocal, z.uuid()).optional(),
+        cartoes: z.record(z.uuid(), z.number().int().min(0).max(64)).optional(),
       }),
     )
     .max(100)
+    .optional(),
+  reserva: z
+    .object({
+      modo: z.enum(["nenhuma", "percentual", "fixa"]),
+      valores: z.record(z.string().max(20), z.number().finite().min(0).max(1000)),
+    })
+    .nullable()
     .optional(),
   ajustes: z
     .array(

@@ -51,7 +51,17 @@ export function FormControlador({
   inicial,
 }: {
   acao: Acao;
-  inicial: { tipo: TipoDoBanco; alimentacao: string | null; tensoes: number[]; protocolos: string[]; observacoes: string | null; isDemo: boolean };
+  inicial: {
+    tipo: TipoDoBanco;
+    alimentacao: string | null;
+    tensoes: number[];
+    protocolos: string[];
+    observacoes: string | null;
+    barramento: string | null;
+    maxModulos: number | null;
+    consumoMaxBarramento: number | null;
+    isDemo: boolean;
+  };
 }) {
   const { estado, onSubmit, pendente } = useFormulario(acao);
   const e = estado.erros ?? {};
@@ -77,6 +87,18 @@ export function FormControlador({
           <Input name="protocolos" defaultValue={inicial.protocolos.join(", ")} maxLength={1000} />
         </Campo>
       </div>
+      <fieldset className="grid gap-4 @lg:grid-cols-3">
+        <legend className="mb-2 text-sm font-medium text-grafite-900">Expansão por cartões</legend>
+        <Campo rotulo="Barramento" erro={e.barramento} ajuda="Cartões de outro barramento não entram.">
+          <Input name="barramento" defaultValue={inicial.barramento ?? ""} maxLength={60} />
+        </Campo>
+        <Campo rotulo="Máximo de módulos" erro={e.maxModulos} ajuda={`Vazio = até 8 na busca.`}>
+          <Input name="maxModulos" inputMode="numeric" defaultValue={inicial.maxModulos ?? ""} />
+        </Campo>
+        <Campo rotulo="Consumo máximo do barramento (mA)" erro={e.consumoMaxBarramento} ajuda="Vazio = não verificar.">
+          <Input name="consumoMaxBarramento" inputMode="numeric" defaultValue={inicial.consumoMaxBarramento ?? ""} />
+        </Campo>
+      </fieldset>
       <Campo rotulo="Observações" erro={e.observacoes}>
         <Textarea name="observacoes" defaultValue={inicial.observacoes ?? ""} maxLength={2000} />
       </Campo>
@@ -93,20 +115,24 @@ export function EditorDeRecursosIntegrados({
   tipos,
   inicial,
   salvar,
+  sufixo = "integradas",
+  rotulo = "Recursos integrados",
 }: {
   tipos: { id: string; codigo: string; nome: string }[];
   inicial: Record<string, number>;
   salvar: (json: string) => Promise<EstadoDoFormulario>;
+  sufixo?: string;
+  rotulo?: string;
 }) {
   const [valores, setValores] = useState(inicial);
   const [estado, setEstado] = useState<EstadoDoFormulario>({});
   const [pendente, iniciar] = useTransition();
   if (tipos.length === 0) return <p className="text-sm text-gray-500">Cadastre os tipos de recurso em Recursos de automação.</p>;
   return (
-    <div className="flex flex-col gap-3" role="group" aria-label="Recursos integrados">
+    <div className="flex flex-col gap-3" role="group" aria-label={rotulo}>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {tipos.map((t) => (
-          <Campo key={t.id} rotulo={`${t.codigo} integradas`}>
+          <Campo key={t.id} rotulo={`${t.codigo} ${sufixo}`}>
             <Input
               type="number"
               min={0}

@@ -15,3 +15,4 @@ export * from "./materiais/motor";
 export * from "./controladores/tipos";
 export * from "./controladores/controladores";
 export * from "./controladores/edicao";
+export * from "./controladores/expansao";

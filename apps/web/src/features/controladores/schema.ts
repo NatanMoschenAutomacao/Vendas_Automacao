@@ -24,6 +24,14 @@ const lista = (max: number) =>
         .slice(0, max),
     );
 
+/** Campo de formulário que aceita vazio (null) ou inteiro. */
+export const inteiroOpcional = (max: number, mensagem: string) =>
+  z
+    .string()
+    .trim()
+    .transform((v) => (v === "" ? null : Number(v)))
+    .pipe(z.number().int(mensagem).min(0, mensagem).max(max, mensagem).nullable());
+
 export const controladorSchema = z.object({
   tipo: z.enum(TIPOS, "Escolha o tipo."),
   alimentacao: z
@@ -40,6 +48,13 @@ export const controladorSchema = z.object({
     .trim()
     .max(2000, "Use no máximo 2000 caracteres.")
     .transform((v) => v || null),
+  barramento: z
+    .string()
+    .trim()
+    .max(60, "Use no máximo 60 caracteres.")
+    .transform((v) => v || null),
+  maxModulos: inteiroOpcional(64, "Máximo de módulos: número inteiro de 0 a 64."),
+  consumoMaxBarramento: inteiroOpcional(1_000_000, "Consumo máximo: número inteiro em mA."),
   isDemo: z.boolean(),
 });
 

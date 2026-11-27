@@ -2,6 +2,7 @@ import "server-only";
 import type { Condicao, ControladorNoSnapshot, Derivacao, EquipamentoNoSnapshot, RegraNoSnapshot, ValorDeResposta } from "@zanatta/engine";
 import { donoDoBanco } from "@/features/regras/dados";
 import { efeitoSchema } from "@/features/regras/schema";
+import { lerReservaPadrao } from "@/features/configuracoes/dados";
 import { db } from "@/server/db";
 import { urlDaImagem } from "@/server/arquivos/armazenamento";
 import { paraPergunta, paraPerguntaDeModelo } from "@/features/perguntas/conversao";
@@ -21,7 +22,7 @@ function derivacao(tipo: keyof typeof TIPO | null, porGrupo: number | null): Der
  * mas o catálogo do vendedor só lista os ativos.
  */
 export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoConfigurador> {
-  const [categorias, equipamentos, kits, imagens, tiposDePainel, funcoes, itens, tiposDeRecurso, regras, controladores] = await Promise.all([
+  const [categorias, equipamentos, kits, imagens, tiposDePainel, funcoes, itens, tiposDeRecurso, regras, controladores, cartoes, reservaPadrao] = await Promise.all([
     db.categoria.findMany({
       where: { ativo: true },
       orderBy: ordemPadrao,
@@ -68,8 +69,11 @@ export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoCo
         recursos: true,
         saidas: { orderBy: { ordem: "asc" }, include: { funcoes: { select: { id: true } } } },
         modelosCompativeis: { select: { id: true } },
+        cartoesCompativeis: { select: { id: true } },
       },
     }),
+    db.cartaoDeExpansao.findMany({ include: { item: { select: { codigo: true, descricao: true } }, recursos: true } }),
+    lerReservaPadrao(),
   ]);
 
   const TIPO_CONTROLADOR = { CONVENCIONAL: "convencional", DIGITAL: "digital", CLP: "clp", IRRIGACAO: "irrigacao", IHM: "ihm" } as const;
@@ -88,6 +92,10 @@ export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoCo
         recursos: Object.fromEntries(c.recursos.map((r) => [r.tipoRecursoId, r.quantidade])),
         saidas: c.saidas.map((s) => ({ id: s.id, codigo: s.codigo, funcoes: s.funcoes.map((f) => f.id) })),
         modelosCompativeis: c.modelosCompativeis.map((m) => m.id),
+        barramento: c.barramento,
+        maxModulos: c.maxModulos,
+        consumoMaxBarramento: c.consumoMaxBarramento,
+        cartoesCompativeis: c.cartoesCompativeis.map((k) => k.id),
       },
     ]),
   );
@@ -201,6 +209,22 @@ export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoCo
       tiposDeRecurso: Object.fromEntries(tiposDeRecurso.map((t) => [t.id, t])),
       regras: regrasDoMotor,
       controladores: controladoresDoMotor,
+      cartoes: Object.fromEntries(
+        cartoes.map((k) => [
+          k.id,
+          {
+            id: k.id,
+            itemId: k.itemId,
+            codigo: k.item.codigo,
+            nome: k.item.descricao,
+            ativo: k.ativo,
+            recursos: Object.fromEntries(k.recursos.map((r) => [r.tipoRecursoId, r.quantidade])),
+            barramento: k.barramento,
+            consumo: k.consumo,
+          },
+        ]),
+      ),
+      reservaPadrao,
     },
   };
 }

@@ -82,7 +82,7 @@ export interface RegraNoSnapshot {
 /** De onde veio uma linha: rastreabilidade do §22. */
 export interface OrigemDaLinha {
   /** "fornecimento" = o próprio equipamento; "ajuste" = ajuste manual. */
-  tipo: "regra" | "fornecimento" | "ajuste" | "controlador";
+  tipo: "regra" | "fornecimento" | "ajuste" | "controlador" | "cartao";
   regraId?: Id;
   regraCodigo?: string;
   instanciaId?: Id;
