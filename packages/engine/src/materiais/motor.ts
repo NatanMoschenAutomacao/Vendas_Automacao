@@ -101,6 +101,29 @@ export function calcularMateriais(
           alcanca: (l) => l.origem.instanciaId === inst.id,
         });
       }
+    } else if (dono.tipo === "controlador" || regra.base === "por_controlador") {
+      // Controladores só existem depois do estágio de recursos: regras deles são de material.
+      if (regra.estagio !== "material") continue;
+      for (const cp of config.controladores ?? []) {
+        if (!cp.controladorId) continue;
+        if (dono.tipo === "controlador" && cp.controladorId !== dono.id) continue;
+        const c = snapshot.controladores?.[cp.controladorId];
+        if (!c?.ativo) continue;
+        const grupos = (config.grupos ?? []).filter((g) => g.controladorId === cp.id).length;
+        avaliacoes.push({
+          regra,
+          chaveDoContexto: `c:${cp.id}`,
+          ctx: {
+            ...(cp.painelId ? ctxDoPainel(cp.painelId) : ctxProjeto),
+            "controlador.tipo": c.tipo,
+            "controlador.codigo": c.codigo,
+            "controlador.grupos": grupos,
+            "base.quantidade": 1,
+          },
+          origem: { tipo: "regra", regraId: regra.id, regraCodigo: regra.codigo, controladorId: cp.id, painelId: cp.painelId ?? undefined, base: regra.base, baseQuantidade: 1 },
+          alcanca: (l) => l.origem.controladorId === cp.id,
+        });
+      }
     } else if (dono.tipo === "tipoDePainel" || regra.base === "por_painel") {
       for (const p of paineis) {
         if (dono.tipo === "tipoDePainel" && p.tipoId !== dono.id) continue;
@@ -238,6 +261,25 @@ export function calcularMateriais(
   const porChave = new Map<string, LinhaDeMaterial>();
   const regraPorId = new Map(regras.map((r) => [r.id, r]));
 
+  // O próprio controlador escolhido para o projeto (Fase 07).
+  for (const cp of config.controladores ?? []) {
+    const c = cp.controladorId ? snapshot.controladores?.[cp.controladorId] : undefined;
+    if (!c?.ativo || !c.itemId) continue;
+    const item = itemValido(null, c.itemId);
+    if (!item) continue;
+    const linha: LinhaDeMaterial = {
+      chave: `controlador:c:${cp.id}:${item.codigo}`,
+      itemId: item.id,
+      codigo: item.codigo,
+      descricao: item.descricao,
+      unidade: item.unidade,
+      quantidade: 1,
+      origem: { tipo: "controlador", controladorId: cp.id, painelId: cp.painelId ?? undefined, base: "por_controlador", baseQuantidade: 1 },
+    };
+    linhas.push(linha);
+    porChave.set(linha.chave, linha);
+  }
+
   // Fornecimento do próprio equipamento (só o que a Zanatta fornece).
   for (const inst of config.instancias) {
     if (inst.fornecimento !== "fornecido") continue;
@@ -340,11 +382,11 @@ export function calcularMateriais(
         });
         continue;
       }
-      if (l.origem.tipo === "fornecimento") {
+      if (l.origem.tipo === "fornecimento" || l.origem.tipo === "controlador") {
         pendencias.push({
           codigo: "REMOCAO_NAO_PERMITIDA",
           gravidade: "advertencia",
-          mensagem: `A regra ${a.regra.codigo} não pode remover o fornecimento do próprio equipamento (${l.codigo}).`,
+          mensagem: `A regra ${a.regra.codigo} não pode remover o fornecimento do próprio equipamento ou controlador (${l.codigo}).`,
           referencia: l.origem.instanciaId ?? a.regra.id,
         });
         continue;

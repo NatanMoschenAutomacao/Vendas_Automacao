@@ -19,6 +19,7 @@ export default async function PaginaDeRegras() {
         equipamento: { select: { id: true, nome: true } },
         modelo: { select: { id: true, nome: true, equipamento: { select: { nome: true } } } },
         tipoDePainel: { select: { id: true, nome: true } },
+        controlador: { select: { id: true, item: { select: { descricao: true } } } },
       },
     }),
     db.tipoDePainel.findMany({ where: { ativo: true }, orderBy: [{ ordem: "asc" }, { nome: "asc" }], select: { id: true, nome: true } }),
@@ -32,7 +33,9 @@ export default async function PaginaDeRegras() {
           ? [`m:${r.modeloId}`, `Modelo: ${r.modelo?.equipamento.nome} › ${r.modelo?.nome}`, undefined]
           : r.donoTipo === "TIPO_DE_PAINEL"
             ? [`t:${r.tipoDePainelId}`, `Tipo de painel: ${r.tipoDePainel?.nome}`, undefined]
-            : ["projeto", "Projeto (componentes gerais)", undefined];
+            : r.donoTipo === "CONTROLADOR"
+              ? [`c:${r.controladorId}`, `Controlador: ${r.controlador?.item.descricao}`, `/admin/controladores/${r.controladorId}`]
+              : ["projeto", "Projeto (componentes gerais)", undefined];
     const g = grupos.get(chave) ?? { titulo, href, regras: [] };
     g.regras.push(r);
     grupos.set(chave, g);
@@ -72,7 +75,7 @@ export default async function PaginaDeRegras() {
               <h2 className="font-medium text-grafite-900">{g.titulo}</h2>
               {g.href && (
                 <Link href={g.href} className="text-sm text-marca-700 hover:underline">
-                  Abrir equipamento
+                  Abrir
                 </Link>
               )}
             </div>

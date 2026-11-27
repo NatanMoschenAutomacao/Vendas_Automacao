@@ -1,5 +1,5 @@
 import "server-only";
-import type { Condicao, Derivacao, EquipamentoNoSnapshot, RegraNoSnapshot, ValorDeResposta } from "@zanatta/engine";
+import type { Condicao, ControladorNoSnapshot, Derivacao, EquipamentoNoSnapshot, RegraNoSnapshot, ValorDeResposta } from "@zanatta/engine";
 import { donoDoBanco } from "@/features/regras/dados";
 import { efeitoSchema } from "@/features/regras/schema";
 import { db } from "@/server/db";
@@ -21,7 +21,7 @@ function derivacao(tipo: keyof typeof TIPO | null, porGrupo: number | null): Der
  * mas o catálogo do vendedor só lista os ativos.
  */
 export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoConfigurador> {
-  const [categorias, equipamentos, kits, imagens, tiposDePainel, funcoes, itens, tiposDeRecurso, regras] = await Promise.all([
+  const [categorias, equipamentos, kits, imagens, tiposDePainel, funcoes, itens, tiposDeRecurso, regras, controladores] = await Promise.all([
     db.categoria.findMany({
       where: { ativo: true },
       orderBy: ordemPadrao,
@@ -62,7 +62,35 @@ export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoCo
       select: { id: true, codigo: true, nome: true, fisico: true, ativo: true },
     }),
     db.regra.findMany({ where: { ativo: true }, orderBy: [{ prioridade: "asc" }, { codigo: "asc" }] }),
+    db.controlador.findMany({
+      include: {
+        item: { select: { codigo: true, descricao: true } },
+        recursos: true,
+        saidas: { orderBy: { ordem: "asc" }, include: { funcoes: { select: { id: true } } } },
+        modelosCompativeis: { select: { id: true } },
+      },
+    }),
   ]);
+
+  const TIPO_CONTROLADOR = { CONVENCIONAL: "convencional", DIGITAL: "digital", CLP: "clp", IRRIGACAO: "irrigacao", IHM: "ihm" } as const;
+  const controladoresDoMotor: Record<string, ControladorNoSnapshot> = Object.fromEntries(
+    controladores.map((c) => [
+      c.id,
+      {
+        id: c.id,
+        itemId: c.itemId,
+        codigo: c.item.codigo,
+        nome: c.item.descricao,
+        tipo: TIPO_CONTROLADOR[c.tipo],
+        ativo: c.ativo,
+        tensoes: c.tensoes,
+        protocolos: c.protocolos,
+        recursos: Object.fromEntries(c.recursos.map((r) => [r.tipoRecursoId, r.quantidade])),
+        saidas: c.saidas.map((s) => ({ id: s.id, codigo: s.codigo, funcoes: s.funcoes.map((f) => f.id) })),
+        modelosCompativeis: c.modelosCompativeis.map((m) => m.id),
+      },
+    ]),
+  );
 
   const snapshot: Record<string, EquipamentoNoSnapshot> = {};
   for (const e of equipamentos) {
@@ -172,6 +200,7 @@ export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoCo
       itens: Object.fromEntries(itens.map((i) => [i.id, i])),
       tiposDeRecurso: Object.fromEntries(tiposDeRecurso.map((t) => [t.id, t])),
       regras: regrasDoMotor,
+      controladores: controladoresDoMotor,
     },
   };
 }

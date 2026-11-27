@@ -12,3 +12,6 @@ export * from "./estrutura/estrutura";
 export * from "./estrutura/edicao";
 export * from "./materiais/tipos";
 export * from "./materiais/motor";
+export * from "./controladores/tipos";
+export * from "./controladores/controladores";
+export * from "./controladores/edicao";

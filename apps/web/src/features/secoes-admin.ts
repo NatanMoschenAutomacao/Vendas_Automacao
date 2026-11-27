@@ -51,7 +51,7 @@ export const SECOES_ADMIN: SecaoAdmin[] = [
   },
   { titulo: "Regras de composição", descricao: "Materiais e recursos gerados por regra.", href: "/admin/regras", fase: 6 },
   { titulo: "Recursos de automação", descricao: "DI, DO, AI, AO, SP e comunicação.", href: "/admin/recursos", fase: 6 },
-  { titulo: "Controladores", descricao: "Funções, saídas funcionais e compatibilidades.", fase: 7 },
+  { titulo: "Controladores", descricao: "Funções, saídas funcionais e compatibilidades.", href: "/admin/controladores", fase: 7 },
   { titulo: "CLPs e cartões", descricao: "Capacidades e expansões.", fase: 8 },
   { titulo: "Serviços e preços", descricao: "Serviços, preços e regras comerciais.", fase: 9 },
   { titulo: "Modelos de texto", descricao: "Trechos do descritivo técnico.", fase: 10 },

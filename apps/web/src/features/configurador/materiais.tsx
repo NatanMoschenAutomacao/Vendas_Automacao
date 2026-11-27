@@ -84,7 +84,11 @@ export function PainelDeMateriais({
 
   const descreverOrigem = (o: OrigemDaLinha) => {
     if (o.tipo === "ajuste") return "Ajuste manual";
-    const onde = o.instanciaId
+    const controlador = o.controladorId ? config.controladores?.find((c) => c.id === o.controladorId) : undefined;
+    if (o.tipo === "controlador") return `Controlador ${controlador?.nome ?? ""}`;
+    const onde = controlador
+      ? `Controlador ${controlador.nome}`
+      : o.instanciaId
       ? nomeDaInstancia(o.instanciaId)
       : o.painelId
         ? `Painel ${paineis.get(o.painelId) ?? ""}`

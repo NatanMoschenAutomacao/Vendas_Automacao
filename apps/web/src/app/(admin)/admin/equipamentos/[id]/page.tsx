@@ -48,11 +48,11 @@ const ABAS = [
   { id: "imagens-interativas", titulo: "Imagens interativas" },
   { id: "estrutura", titulo: "Acionamento e proteção" },
   { id: "materiais", titulo: "Materiais e recursos" },
+  { id: "controladores", titulo: "Controladores" },
 ] as const;
 
 /** Abas que dependem das próximas fases aparecem desabilitadas. */
 const ABAS_FUTURAS = [
-  { titulo: "Controladores", fase: 7 },
   { titulo: "Preços", fase: 9 },
 ];
 
@@ -121,6 +121,7 @@ export default async function PaginaEquipamento({ params, searchParams }: PagePr
       )}
       {aba === "imagens-interativas" && <AbaImagensInterativas equipamentoId={e.id} />}
       {aba === "materiais" && <AbaMateriais equipamentoId={e.id} />}
+      {aba === "controladores" && <AbaControladores equipamentoId={e.id} />}
       {aba === "imagem" && (
         <Card className="max-w-4xl p-6">
           <FormImagem
@@ -390,6 +391,48 @@ async function AbaMateriais({ equipamentoId }: { equipamentoId: string }) {
           <ListaDeRegras regras={m.regras} vazio="Sem regras próprias." rotulo={`Regras do modelo ${m.nome}`} />
         </Card>
       ))}
+    </div>
+  );
+}
+
+async function AbaControladores({ equipamentoId }: { equipamentoId: string }) {
+  const modelos = await db.modelo.findMany({
+    where: { equipamentoId },
+    orderBy: [{ ordem: "asc" }, { nome: "asc" }],
+    select: { id: true, nome: true, controladores: { select: { id: true, ativo: true, item: { select: { codigo: true, descricao: true } } } } },
+  });
+  return (
+    <div className="flex max-w-4xl flex-col gap-4">
+      <p className="text-sm text-gray-500">
+        A compatibilidade é marcada na página de cada controlador. Controladores sem lista de modelos são aceitos com aviso para conferência
+        técnica.
+      </p>
+      <Card className="overflow-hidden">
+        <ul className="divide-y divide-gray-100" aria-label="Controladores compatíveis por modelo">
+          {modelos.map((m) => (
+            <li key={m.id} className="px-4 py-3">
+              <p className="font-medium text-grafite-900">{m.nome}</p>
+              {m.controladores.length === 0 ? (
+                <p className="text-sm text-gray-500">Nenhum controlador declarou compatibilidade.</p>
+              ) : (
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {m.controladores.map((c) => (
+                    <Link key={c.id} href={`/admin/controladores/${c.id}`} className="rounded-md bg-gray-50 px-2 py-1 text-sm hover:bg-gray-100">
+                      {c.item.descricao} <span className="font-mono text-xs text-gray-500">{c.item.codigo}</span>
+                      {!c.ativo && " (inativo)"}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      </Card>
+      <div>
+        <Link href="/admin/controladores" className="text-sm text-marca-700 hover:underline">
+          Abrir controladores
+        </Link>
+      </div>
     </div>
   );
 }

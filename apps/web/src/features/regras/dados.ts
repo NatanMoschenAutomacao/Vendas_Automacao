@@ -9,23 +9,32 @@ const UUID = /^[0-9a-f-]{36}$/i;
 /** Lê o dono a partir dos parâmetros da URL (?dono=equipamento&id=…). */
 export function lerDono(tipo: unknown, id: unknown): DonoDaRegra | null {
   if (tipo === "projeto") return { tipo: "projeto" };
-  if ((tipo === "equipamento" || tipo === "modelo" || tipo === "tipoDePainel") && typeof id === "string" && UUID.test(id)) return { tipo, id };
+  if ((tipo === "equipamento" || tipo === "modelo" || tipo === "tipoDePainel" || tipo === "controlador") && typeof id === "string" && UUID.test(id))
+    return { tipo, id };
   return null;
 }
 
-export function donoDoBanco(r: { donoTipo: string; equipamentoId: string | null; modeloId: string | null; tipoDePainelId: string | null }): DonoDaRegra {
+export function donoDoBanco(r: {
+  donoTipo: string;
+  equipamentoId: string | null;
+  modeloId: string | null;
+  tipoDePainelId: string | null;
+  controladorId: string | null;
+}): DonoDaRegra {
   if (r.donoTipo === "EQUIPAMENTO") return { tipo: "equipamento", id: r.equipamentoId! };
   if (r.donoTipo === "MODELO") return { tipo: "modelo", id: r.modeloId! };
   if (r.donoTipo === "TIPO_DE_PAINEL") return { tipo: "tipoDePainel", id: r.tipoDePainelId! };
+  if (r.donoTipo === "CONTROLADOR") return { tipo: "controlador", id: r.controladorId! };
   return { tipo: "projeto" };
 }
 
 export function donoParaBanco(d: DonoDaRegra) {
   return {
-    donoTipo: ({ equipamento: "EQUIPAMENTO", modelo: "MODELO", tipoDePainel: "TIPO_DE_PAINEL", projeto: "PROJETO" } as const)[d.tipo],
+    donoTipo: ({ equipamento: "EQUIPAMENTO", modelo: "MODELO", tipoDePainel: "TIPO_DE_PAINEL", controlador: "CONTROLADOR", projeto: "PROJETO" } as const)[d.tipo],
     equipamentoId: d.tipo === "equipamento" ? d.id : null,
     modeloId: d.tipo === "modelo" ? d.id : null,
     tipoDePainelId: d.tipo === "tipoDePainel" ? d.id : null,
+    controladorId: d.tipo === "controlador" ? d.id : null,
   };
 }
 
@@ -46,6 +55,10 @@ export async function carregarDono(dono: DonoDaRegra): Promise<ContextoDoDono | 
   if (dono.tipo === "tipoDePainel") {
     const t = await db.tipoDePainel.findUnique({ where: { id: dono.id }, select: { nome: true } });
     return t ? { rotulo: `Tipo de painel: ${t.nome}`, voltar: "/admin/regras", comuns: doProjeto } : null;
+  }
+  if (dono.tipo === "controlador") {
+    const c = await db.controlador.findUnique({ where: { id: dono.id }, select: { item: { select: { descricao: true } } } });
+    return c ? { rotulo: `Controlador: ${c.item.descricao}`, voltar: `/admin/controladores/${dono.id}`, comuns: doProjeto } : null;
   }
   const equipamentoId =
     dono.tipo === "equipamento" ? dono.id : (await db.modelo.findUnique({ where: { id: dono.id }, select: { equipamentoId: true } }))?.equipamentoId;
