@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const CADASTROS = ["tipo-de-painel", "funcao-de-controle"] as const;
+export const CADASTROS = ["tipo-de-painel", "funcao-de-controle", "tipo-de-recurso"] as const;
 export type Cadastro = (typeof CADASTROS)[number];
 
 const descricao = z
@@ -28,6 +28,28 @@ export const funcaoDeControleSchema = z.object({
   isDemo: z.boolean(),
 });
 
+export const tipoDeRecursoSchema = z.object({
+  codigo: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .min(1, "Informe o código.")
+    .max(20, "Use no máximo 20 caracteres.")
+    .regex(/^[A-Z][A-Z0-9_]*$/, "Use letras maiúsculas, números e sublinhado, começando por letra."),
+  nome: z.string().trim().min(2, "Informe o nome.").max(80, "Use no máximo 80 caracteres."),
+  descricao,
+  fisico: z.boolean(),
+  isDemo: z.boolean(),
+});
+
+/** Designações usuais de I/O; nenhuma capacidade ou dado comercial. */
+export const TIPOS_DE_RECURSO_PADRAO = [
+  { codigo: "DI", nome: "Entrada digital", fisico: true },
+  { codigo: "DO", nome: "Saída digital", fisico: true },
+  { codigo: "AI", nome: "Entrada analógica", fisico: true },
+  { codigo: "AO", nome: "Saída analógica", fisico: true },
+] as const;
+
 export const INFO_DO_CADASTRO: Record<Cadastro, { titulo: string; singular: string; novo: string; caminho: string; descricao: string }> = {
   "tipo-de-painel": {
     titulo: "Tipos de painel",
@@ -42,5 +64,12 @@ export const INFO_DO_CADASTRO: Record<Cadastro, { titulo: string; singular: stri
     novo: "Nova função de controle",
     caminho: "/admin/funcoes-de-controle",
     descricao: "Temperatura, umidade, temporização, nível… Usadas pelos grupos de controle e pelas saídas dos controladores.",
+  },
+  "tipo-de-recurso": {
+    titulo: "Recursos de automação",
+    singular: "tipo de recurso",
+    novo: "Novo tipo de recurso",
+    caminho: "/admin/recursos",
+    descricao: "DI, DO, AI, AO, saídas funcionais (SP) e comunicação. As regras dos equipamentos geram a lista de I/O com estes tipos.",
   },
 };

@@ -2,6 +2,7 @@ import type { Valor } from "./regras/contexto";
 import { resolverPerguntas } from "./perguntas/heranca";
 import { avaliarPerguntas, type ResultadoDasPerguntas } from "./perguntas/aplicabilidade";
 import { calcularEstrutura, contextoDeEstrutura } from "./estrutura/estrutura";
+import { calcularMateriais } from "./materiais/motor";
 import {
   ESTAGIOS,
   type ConfiguracaoDoProjeto,
@@ -14,8 +15,8 @@ import {
  * Ponto de entrada do motor. Recalcula tudo do zero a cada chamada:
  * nunca acumula sobre um resultado anterior (cenário 16 do §48).
  *
- * Executa os 8 estágios na ordem definida na arquitetura. Até a Fase 05 têm
- * lógica: perguntas (aplicabilidade por instância), estrutura e pendências.
+ * Executa os 8 estágios na ordem definida na arquitetura. Até a Fase 06 têm
+ * lógica: perguntas, estrutura, recursos, materiais, ajustes e pendências.
  */
 export function calcular(
   config: ConfiguracaoDoProjeto,
@@ -39,6 +40,8 @@ export function calcular(
     doProjeto[`projeto.tem(${codigo})`] = qtd > 0;
     doProjeto[`projeto.quantidade(${codigo})`] = qtd;
   }
+
+  const contextos = new Map<string, Record<string, Valor>>();
 
   // Estágio 1: perguntas aplicáveis de cada instância.
   for (const inst of config.instancias) {
@@ -73,11 +76,21 @@ export function calcular(
     const r = avaliarPerguntas(heranca.perguntas, inst.respostas ?? {}, ctx, inst.id);
     perguntas[inst.id] = r;
     pendencias.push(...r.pendencias);
+    const doContexto: Record<string, Valor> = { ...ctx };
+    for (const [k, v] of Object.entries(r.valores)) doContexto[`resposta.${k}`] = v;
+    contextos.set(inst.id, doContexto);
   }
 
   // Estágio 2: estrutura (ambientes, setores, painéis, acionamentos, proteções, grupos).
   const { estrutura, pendencias: daEstrutura } = calcularEstrutura(config, snapshot);
   pendencias.push(...daEstrutura);
+
+  // Estágios 3, 5 e 6: recursos, materiais e ajustes manuais.
+  const { materiais, pendencias: dosMateriais } = calcularMateriais(config, snapshot, estrutura, contextos, {
+    ...doProjeto,
+    "projeto.ambientes": config.ambientes?.length ?? 0,
+  });
+  pendencias.push(...dosMateriais);
 
   for (const inst of config.instancias) {
     if (!Number.isInteger(inst.quantidade) || inst.quantidade < 1) {
@@ -105,5 +118,5 @@ export function calcular(
       a.mensagem.localeCompare(b.mensagem),
   );
 
-  return { pendencias, perguntas, estrutura, estagios: [...ESTAGIOS] };
+  return { pendencias, perguntas, estrutura, materiais, estagios: [...ESTAGIOS] };
 }

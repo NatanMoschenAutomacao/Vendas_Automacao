@@ -7,7 +7,15 @@ import { db } from "@/server/db";
 import { exigirPermissao } from "@/server/auth/dal";
 import { auditar } from "@/server/audit";
 import type { EstadoDoFormulario } from "@/ui/form-status";
-import { CADASTROS, INFO_DO_CADASTRO, funcaoDeControleSchema, tipoDePainelSchema, type Cadastro } from "./schema";
+import {
+  CADASTROS,
+  INFO_DO_CADASTRO,
+  TIPOS_DE_RECURSO_PADRAO,
+  funcaoDeControleSchema,
+  tipoDeRecursoSchema,
+  tipoDePainelSchema,
+  type Cadastro,
+} from "./schema";
 
 const ACAO = "biblioteca:gerenciar" as const;
 const idSchema = z.uuid();
@@ -21,14 +29,16 @@ function errosDe(issues: z.core.$ZodIssue[]) {
 
 function ler(cadastro: Cadastro, form: FormData) {
   const t = (c: string) => String(form.get(c) ?? "");
-  return cadastro === "tipo-de-painel"
-    ? tipoDePainelSchema.safeParse({ nome: t("nome"), descricao: t("descricao"), isDemo: form.get("isDemo") === "on" })
-    : funcaoDeControleSchema.safeParse({ codigo: t("codigo"), nome: t("nome"), descricao: t("descricao"), isDemo: form.get("isDemo") === "on" });
+  const isDemo = form.get("isDemo") === "on";
+  if (cadastro === "tipo-de-painel") return tipoDePainelSchema.safeParse({ nome: t("nome"), descricao: t("descricao"), isDemo });
+  if (cadastro === "tipo-de-recurso")
+    return tipoDeRecursoSchema.safeParse({ codigo: t("codigo"), nome: t("nome"), descricao: t("descricao"), fisico: form.get("fisico") === "on", isDemo });
+  return funcaoDeControleSchema.safeParse({ codigo: t("codigo"), nome: t("nome"), descricao: t("descricao"), isDemo });
 }
 
 /* Os dois cadastros têm a mesma forma; este adaptador evita duplicar as ações. */
 function tabela(cadastro: Cadastro, tx: Prisma.TransactionClient | typeof db = db) {
-  return (cadastro === "tipo-de-painel" ? tx.tipoDePainel : tx.funcaoDeControle) as unknown as {
+  return (cadastro === "tipo-de-painel" ? tx.tipoDePainel : cadastro === "tipo-de-recurso" ? tx.tipoDeRecurso : tx.funcaoDeControle) as unknown as {
     create(a: { data: object }): Promise<{ id: string }>;
     update(a: { where: { id: string }; data: object }): Promise<object>;
     delete(a: { where: { id: string } }): Promise<object>;
@@ -41,6 +51,7 @@ function tabela(cadastro: Cadastro, tx: Prisma.TransactionClient | typeof db = d
 const MENSAGEM_DUPLICADO: Record<Cadastro, Record<string, string>> = {
   "tipo-de-painel": { nome: "Já existe um tipo de painel com esse nome." },
   "funcao-de-controle": { codigo: "Já existe uma função com esse código." },
+  "tipo-de-recurso": { codigo: "Já existe um tipo de recurso com esse código." },
 };
 
 export async function salvarCadastro(cadastro: Cadastro, id: string | null, _: EstadoDoFormulario, form: FormData): Promise<EstadoDoFormulario> {
@@ -115,4 +126,21 @@ export async function excluirCadastro(cadastro: Cadastro, id: string) {
     await auditar(tx, { usuarioId: u.id, acao: "excluir", entidade: cadastro, entidadeId: id, antes });
   });
   revalidatePath(INFO_DO_CADASTRO[cadastro].caminho);
+}
+
+/** Cria DI, DO, AI e AO que ainda não existirem. */
+export async function criarTiposDeRecursoPadrao(): Promise<EstadoDoFormulario> {
+  const u = await exigirPermissao(ACAO);
+  const existentes = new Set((await db.tipoDeRecurso.findMany({ select: { codigo: true } })).map((t) => t.codigo));
+  const novos = TIPOS_DE_RECURSO_PADRAO.filter((t) => !existentes.has(t.codigo));
+  if (novos.length === 0) return { ok: true, mensagem: "Os tipos padrão já existem." };
+  const ultima = await db.tipoDeRecurso.aggregate({ _max: { ordem: true } });
+  await db.$transaction(async (tx) => {
+    for (const [n, t] of novos.entries()) {
+      const c = await tx.tipoDeRecurso.create({ data: { ...t, ordem: (ultima._max.ordem ?? -1) + 1 + n } });
+      await auditar(tx, { usuarioId: u.id, acao: "criar", entidade: "tipo-de-recurso", entidadeId: c.id, depois: c });
+    }
+  });
+  revalidatePath(INFO_DO_CADASTRO["tipo-de-recurso"].caminho);
+  return { ok: true, mensagem: `${novos.length} tipo(s) criado(s).` };
 }

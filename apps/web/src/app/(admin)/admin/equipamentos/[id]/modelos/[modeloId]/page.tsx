@@ -3,7 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { obterEquipamento } from "@/features/equipamentos/queries";
-import { atualizarModelo, enviarImagem, removerImagem, salvarDerivacao } from "@/features/equipamentos/actions";
+import { atualizarModelo, enviarImagem, removerImagem, salvarDerivacao, salvarItemDoModelo } from "@/features/equipamentos/actions";
+import { FormItemDoModelo } from "@/features/equipamentos/item-do-modelo";
+import { ListaDeRegras } from "@/features/regras/lista";
+import { db } from "@/server/db";
 import { FormDerivacao } from "@/features/equipamentos/derivacao";
 import { FormImagem, FormModelo } from "@/features/equipamentos/formularios";
 import { AcoesDoCabecalhoDoModelo } from "@/features/equipamentos/acoes";
@@ -22,7 +25,14 @@ export default async function PaginaModelo({ params }: PageProps<"/admin/equipam
   const e = await obterEquipamento(id);
   const m = e?.modelos.find((x) => x.id === modeloId);
   if (!e || !m) notFound();
-  const dados = await carregarPerguntasDoEquipamento(e.id);
+  const [dados, itens, linha] = await Promise.all([
+    carregarPerguntasDoEquipamento(e.id),
+    db.itemDeCatalogo.findMany({ orderBy: { codigo: "asc" }, select: { id: true, codigo: true, descricao: true, ativo: true } }),
+    db.modelo.findUniqueOrThrow({
+      where: { id: m.id },
+      select: { itemId: true, regras: { orderBy: [{ estagio: "asc" }, { prioridade: "asc" }, { codigo: "asc" }] } },
+    }),
+  ]);
   const perguntasDoModelo = dados.modelos.find((x) => x.id === m.id)?.perguntas ?? [];
   const rotulos = Object.fromEntries(
     variaveisDisponiveis(dados.perguntasMotor, dados.definicoes).map((v) => [v.nome, v.rotulo.replace(/^[^›]+› /, "")]),
@@ -65,8 +75,27 @@ export default async function PaginaModelo({ params }: PageProps<"/admin/equipam
           />
           <h2 className="mb-4 mt-8 font-medium text-grafite-900">Acionamento e proteção</h2>
           <FormDerivacao acao={salvarDerivacao.bind(null, "modelo", m.id)} valores={m} herdavel />
+          <h2 className="mb-4 mt-8 font-medium text-grafite-900">Materiais</h2>
+          <FormItemDoModelo acao={salvarItemDoModelo.bind(null, m.id)} itens={itens} valor={linha.itemId} />
         </Card>
       </div>
+      <section className="mt-8 flex max-w-5xl flex-col gap-3">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="font-medium text-grafite-900">Regras deste modelo</h2>
+            <p className="text-sm text-gray-500">Somam-se às regras de {e.nome}.</p>
+          </div>
+          <Link
+            href={`/admin/regras/nova?dono=modelo&id=${m.id}`}
+            className="inline-flex h-8 items-center rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium hover:bg-gray-50"
+          >
+            Nova regra do modelo
+          </Link>
+        </div>
+        <Card className="overflow-hidden">
+          <ListaDeRegras regras={linha.regras} vazio="Sem regras próprias." rotulo="Regras do modelo" />
+        </Card>
+      </section>
       <section className="mt-8 flex max-w-5xl flex-col gap-3">
         <div>
           <h2 className="font-medium text-grafite-900">Perguntas deste modelo</h2>

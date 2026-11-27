@@ -1,5 +1,7 @@
 import "server-only";
-import type { Derivacao, EquipamentoNoSnapshot, ValorDeResposta } from "@zanatta/engine";
+import type { Condicao, Derivacao, EquipamentoNoSnapshot, RegraNoSnapshot, ValorDeResposta } from "@zanatta/engine";
+import { donoDoBanco } from "@/features/regras/dados";
+import { efeitoSchema } from "@/features/regras/schema";
 import { db } from "@/server/db";
 import { urlDaImagem } from "@/server/arquivos/armazenamento";
 import { paraPergunta, paraPerguntaDeModelo } from "@/features/perguntas/conversao";
@@ -19,7 +21,7 @@ function derivacao(tipo: keyof typeof TIPO | null, porGrupo: number | null): Der
  * mas o catálogo do vendedor só lista os ativos.
  */
 export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoConfigurador> {
-  const [categorias, equipamentos, kits, imagens, tiposDePainel, funcoes] = await Promise.all([
+  const [categorias, equipamentos, kits, imagens, tiposDePainel, funcoes, itens, tiposDeRecurso, regras] = await Promise.all([
     db.categoria.findMany({
       where: { ativo: true },
       orderBy: ordemPadrao,
@@ -51,6 +53,15 @@ export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoCo
     }),
     db.tipoDePainel.findMany({ orderBy: ordemPadrao, select: { id: true, nome: true, ativo: true } }),
     db.funcaoDeControle.findMany({ orderBy: ordemPadrao, select: { id: true, codigo: true, nome: true, ativo: true } }),
+    db.itemDeCatalogo.findMany({
+      orderBy: { codigo: "asc" },
+      select: { id: true, codigo: true, descricao: true, unidade: true, fracionavel: true, ativo: true },
+    }),
+    db.tipoDeRecurso.findMany({
+      orderBy: [{ ordem: "asc" }, { codigo: "asc" }],
+      select: { id: true, codigo: true, nome: true, fisico: true, ativo: true },
+    }),
+    db.regra.findMany({ where: { ativo: true }, orderBy: [{ prioridade: "asc" }, { codigo: "asc" }] }),
   ]);
 
   const snapshot: Record<string, EquipamentoNoSnapshot> = {};
@@ -71,9 +82,27 @@ export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoCo
         perguntas: m.perguntas.map(paraPerguntaDeModelo),
         acionamento: derivacao(m.acionamento, m.acionamentoPorGrupo),
         protecao: derivacao(m.protecao, m.protecaoPorGrupo),
+        itemId: m.itemId,
       })),
     };
   }
+
+  const regrasDoMotor: RegraNoSnapshot[] = regras.map((r) => ({
+    id: r.id,
+    codigo: r.codigo,
+    nome: r.nome,
+    dono: donoDoBanco(r),
+    estagio: r.estagio === "RECURSO" ? "recurso" : "material",
+    base: r.base as RegraNoSnapshot["base"],
+    condicao: (r.condicao ?? null) as Condicao | null,
+    prioridade: r.prioridade,
+    permiteRemocao: r.permiteRemocao,
+    ativo: r.ativo,
+    efeitos: (Array.isArray(r.efeitos) ? r.efeitos : []).flatMap((e) => {
+      const p = efeitoSchema.safeParse(e);
+      return p.success ? [p.data] : [];
+    }),
+  }));
 
   return {
     categorias,
@@ -140,6 +169,9 @@ export async function carregarBibliotecaDoConfigurador(): Promise<BibliotecaDoCo
       equipamentos: snapshot,
       tiposDePainel: Object.fromEntries(tiposDePainel.map((t) => [t.id, t])),
       funcoes: Object.fromEntries(funcoes.map((f) => [f.id, f])),
+      itens: Object.fromEntries(itens.map((i) => [i.id, i])),
+      tiposDeRecurso: Object.fromEntries(tiposDeRecurso.map((t) => [t.id, t])),
+      regras: regrasDoMotor,
     },
   };
 }

@@ -111,9 +111,21 @@ export async function salvarRascunho(id: string, json: string): Promise<Resultad
   if (!config.success) return { ok: false, erro: config.error.issues[0]?.message ?? "Configuração inválida." };
   const r = await db.$transaction(async (tx) => {
     const rev = await tx.revisao.findFirst({ where: { orcamentoId: id }, orderBy: { numero: "desc" } });
+    // Autor e data dos ajustes manuais vêm do servidor, nunca do navegador.
+    const anteriores = new Map(
+      (((rev?.configuracao as { ajustes?: { id: string; autor?: string | null; data?: string | null }[] } | null)?.ajustes) ?? []).map((a) => [a.id, a]),
+    );
+    const agora = new Date().toISOString();
+    const dados = {
+      ...config.data,
+      ajustes: config.data.ajustes?.map((a) => {
+        const antes = anteriores.get(a.id);
+        return { ...a, autor: antes ? (antes.autor ?? null) : u.nome, data: antes ? (antes.data ?? null) : agora };
+      }),
+    };
     const salva = rev
-      ? await tx.revisao.update({ where: { id: rev.id }, data: { configuracao: config.data } })
-      : await tx.revisao.create({ data: { orcamentoId: id, numero: 1, configuracao: config.data } });
+      ? await tx.revisao.update({ where: { id: rev.id }, data: { configuracao: dados } })
+      : await tx.revisao.create({ data: { orcamentoId: id, numero: 1, configuracao: dados } });
     await tx.orcamento.update({ where: { id }, data: { atualizadoEm: new Date() } });
     return salva;
   });

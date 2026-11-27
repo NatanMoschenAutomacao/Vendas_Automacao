@@ -121,6 +121,7 @@ model Equipamento {
   perguntas          Pergunta[]
   itensDeKit         ItemDeKit[]
   imagensInterativas ImagemInterativa[]
+  regras             Regra[]
 
   @@index([categoriaId, ordem])
   @@map("equipamentos")
@@ -164,11 +165,15 @@ model Modelo {
   acionamentoPorGrupo Int?
   protecao            TipoDeDerivacao?
   protecaoPorGrupo    Int?
+  /// Item do catálogo fornecido quando o equipamento é da Zanatta.
+  itemId        String?     @db.Uuid
+  item          ItemDeCatalogo? @relation(fields: [itemId], references: [id], onDelete: SetNull)
   criadoEm      DateTime    @default(now())
   atualizadoEm  DateTime    @updatedAt
 
   perguntas  Pergunta[]
   itensDeKit ItemDeKit[]
+  regras     Regra[]
 
   @@unique([equipamentoId, codigo])
   @@index([equipamentoId, ordem])
@@ -392,6 +397,8 @@ model TipoDePainel {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
+  regras Regra[]
+
   @@map("tipos_de_painel")
 }
 
@@ -408,4 +415,102 @@ model FuncaoDeControle {
   atualizadoEm DateTime @updatedAt
 
   @@map("funcoes_de_controle")
+}
+
+/// Categoria do catálogo central (contatores, cabos, sensores…).
+model CategoriaDeComponente {
+  id           String           @id @default(uuid()) @db.Uuid
+  nome         String           @unique
+  ordem        Int              @default(0)
+  ativo        Boolean          @default(true)
+  criadoEm     DateTime         @default(now())
+  atualizadoEm DateTime         @updatedAt
+  itens        ItemDeCatalogo[]
+
+  @@map("categorias_de_componente")
+}
+
+/// Catálogo central: um cadastro único para componente, sensor, controlador, cartão e acessório.
+model ItemDeCatalogo {
+  id               String                 @id @default(uuid()) @db.Uuid
+  codigo           String                 @unique
+  codigoFabricante String?
+  descricao        String
+  fabricante       String?
+  modelo           String?
+  unidade          String                 @default("pç")
+  /// Aceita quantidade fracionada (m, kg). Senão, sempre arredonda para cima.
+  fracionavel      Boolean                @default(false)
+  fornecedor       String?
+  atributos        Json                   @default("{}")
+  categoriaId      String?                @db.Uuid
+  categoria        CategoriaDeComponente? @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  ativo            Boolean                @default(true)
+  isDemo           Boolean                @default(false)
+  criadoEm         DateTime               @default(now())
+  atualizadoEm     DateTime               @updatedAt
+
+  modelos Modelo[]
+
+  @@index([descricao])
+  @@map("itens_de_catalogo")
+}
+
+/// Tipo de recurso de automação (DI, DO, AI, AO, SP, RS485…), cadastrável.
+model TipoDeRecurso {
+  id           String   @id @default(uuid()) @db.Uuid
+  codigo       String   @unique
+  nome         String
+  descricao    String?
+  /// Ponto físico de I/O.
+  fisico       Boolean  @default(true)
+  ordem        Int      @default(0)
+  ativo        Boolean  @default(true)
+  isDemo       Boolean  @default(false)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@map("tipos_de_recurso")
+}
+
+enum DonoDeRegra {
+  EQUIPAMENTO
+  MODELO
+  TIPO_DE_PAINEL
+  PROJETO
+}
+
+enum EstagioDeRegra {
+  RECURSO
+  MATERIAL
+}
+
+/// Regra única para recursos e materiais: condição + base de cálculo + efeitos + prioridade (§20).
+model Regra {
+  id             String         @id @default(uuid()) @db.Uuid
+  codigo         String         @unique
+  nome           String
+  descricao      String?
+  donoTipo       DonoDeRegra
+  equipamentoId  String?        @db.Uuid
+  equipamento    Equipamento?   @relation(fields: [equipamentoId], references: [id], onDelete: Cascade)
+  modeloId       String?        @db.Uuid
+  modelo         Modelo?        @relation(fields: [modeloId], references: [id], onDelete: Cascade)
+  tipoDePainelId String?        @db.Uuid
+  tipoDePainel   TipoDePainel?  @relation(fields: [tipoDePainelId], references: [id], onDelete: Cascade)
+  estagio        EstagioDeRegra
+  /// por_equipamento, por_acionamento, por_painel… (BASES_DE_CALCULO do motor).
+  base           String
+  condicao       Json?
+  prioridade     Int            @default(100)
+  permiteRemocao Boolean        @default(false)
+  /// Lista de efeitos (JSON validado pelo schema da aplicação).
+  efeitos        Json           @default("[]")
+  ativo          Boolean        @default(true)
+  isDemo         Boolean        @default(false)
+  criadoEm       DateTime       @default(now())
+  atualizadoEm   DateTime       @updatedAt
+
+  @@index([donoTipo])
+  @@map("regras")
 }

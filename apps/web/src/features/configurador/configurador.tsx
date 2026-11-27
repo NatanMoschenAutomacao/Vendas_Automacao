@@ -36,6 +36,7 @@ import { CampoDeResposta } from "@/features/perguntas/campo-de-resposta";
 import { salvarRascunho } from "@/features/orcamentos/actions";
 import { ImagemComHotspots } from "./imagem-com-hotspots";
 import { PainelDeEstrutura, PainelDeGrupos, ResumoDaEstrutura } from "./estrutura";
+import { PainelDeMateriais } from "./materiais";
 import type {
   BibliotecaDoConfigurador,
   CategoriaDoConfigurador,
@@ -70,7 +71,7 @@ export function Configurador({
   const [selecionada, setSelecionada] = useState<string | null>(inicial.instancias[0]?.id ?? null);
   const [categoriaAtual, setCategoriaAtual] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
-  const [aba, setAba] = useState<"itens" | "estrutura" | "grupos">("itens");
+  const [aba, setAba] = useState<"itens" | "estrutura" | "grupos" | "materiais">("itens");
   const [salvamento, setSalvamento] = useState<EstadoDoSalvamento>({ tipo: "salvo", em: salvoEm ? new Date(salvoEm) : null });
 
   const resultado = useMemo(() => calcular(config, snapshot), [config, snapshot]);
@@ -227,6 +228,7 @@ export function Configurador({
     if (painel) return { nome: `Painel ${painel.identificacao}`, aba: "estrutura" };
     const setor = config.setores?.find((x) => x.id === id);
     if (setor) return { nome: `Setor ${setor.nome}`, aba: "estrutura" };
+    if (config.ajustes?.some((a) => a.id === id)) return { nome: "Ajuste manual", aba: "materiais" };
     return null;
   };
   const pendenciasPorInstancia = new Map<string, Pendencia[]>();
@@ -297,6 +299,7 @@ export function Configurador({
             ["itens", "Equipamentos"],
             ["estrutura", "Ambientes e painéis"],
             ["grupos", "Grupos de controle"],
+            ["materiais", "Materiais e I/O"],
           ] as const
         ).map(([id, titulo]) => (
           <button
@@ -330,6 +333,16 @@ export function Configurador({
           mudar={mudar}
           biblioteca={biblioteca}
           estrutura={resultado.estrutura}
+          editavel={editavel}
+          nomeDaInstancia={(id) => nomeDaInstancia(id) ?? "item"}
+        />
+      )}
+      {aba === "materiais" && (
+        <PainelDeMateriais
+          config={config}
+          mudar={mudar}
+          biblioteca={biblioteca}
+          materiais={resultado.materiais}
           editavel={editavel}
           nomeDaInstancia={(id) => nomeDaInstancia(id) ?? "item"}
         />
