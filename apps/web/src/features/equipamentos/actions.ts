@@ -8,6 +8,7 @@ import { db } from "@/server/db";
 import { exigirPermissao } from "@/server/auth/dal";
 import { auditar } from "@/server/audit";
 import { armazenamento } from "@/server/arquivos/armazenamento";
+import { limparImagemOrfa } from "@/server/arquivos/imagens";
 import { EXTENSAO, validarImagem } from "@/server/arquivos/imagem";
 import type { EstadoDoFormulario } from "@/ui/form-status";
 import { mover } from "@/features/categorias/arvore";
@@ -560,15 +561,4 @@ export async function removerImagem(alvo: Alvo, id: string) {
   });
   if (anterior) await limparImagemOrfa(anterior);
   revalidar(equipamentoId);
-}
-
-/** Apaga a imagem do banco e do armazenamento se nenhum cadastro a usa mais. */
-async function limparImagemOrfa(imagemId: string) {
-  const [eqs, mods] = await Promise.all([
-    db.equipamento.count({ where: { imagemId } }),
-    db.modelo.count({ where: { imagemId } }),
-  ]);
-  if (eqs + mods > 0) return;
-  const img = await db.imagem.delete({ where: { id: imagemId } }).catch(() => null);
-  if (img) await armazenamento().remover(img.chave).catch(() => undefined);
 }

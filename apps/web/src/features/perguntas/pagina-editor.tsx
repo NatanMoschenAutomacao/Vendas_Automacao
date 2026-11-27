@@ -68,7 +68,11 @@ export async function PaginaEditorDePergunta({
     : VAZIA;
 
   const efetivas = modelo ? resolverPerguntas(eq.perguntasMotor, modelo.perguntas).perguntas : eq.perguntasMotor;
-  const variaveis = variaveisDisponiveis(efetivas.filter((p) => p.chave !== linha?.chave), eq.definicoes);
+  const variaveis = variaveisDisponiveis(
+    efetivas.filter((p) => p.chave !== linha?.chave),
+    eq.definicoes,
+    await db.equipamento.findMany({ where: { ativo: true }, orderBy: { nome: "asc" }, select: { codigo: true, nome: true } }),
+  );
   const voltar = modelo ? `/admin/equipamentos/${eq.id}/modelos/${modelo.id}` : `/admin/equipamentos/${eq.id}?aba=perguntas`;
   const dono = modelo ? { modeloId: modelo.id } : { equipamentoId: eq.id };
 

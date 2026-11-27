@@ -56,15 +56,29 @@ export function variavelDaPergunta(p: Pergunta, definicoes: readonly DefinicaoPa
   }
 }
 
-/** Variáveis que uma pergunta pode usar: atributos, instância e as outras perguntas. */
+export interface EquipamentoParaVariavel {
+  codigo: string;
+  nome: string;
+}
+
+/** projeto.tem("codigo") e projeto.quantidade("codigo") de cada equipamento da biblioteca. */
+export function variaveisDoProjeto(equipamentos: readonly EquipamentoParaVariavel[]): DescricaoDeVariavel[] {
+  return equipamentos.flatMap((e) => [
+    { nome: `projeto.tem(${e.codigo})`, rotulo: `Projeto › Tem ${e.nome}`, tipo: "booleano" as const },
+    { nome: `projeto.quantidade(${e.codigo})`, rotulo: `Projeto › Quantidade de ${e.nome}`, tipo: "numero" as const },
+  ]);
+}
+
+/** Variáveis que uma pergunta pode usar: atributos, instância, projeto e as outras perguntas. */
 export function variaveisDisponiveis(
   perguntas: readonly Pergunta[],
   definicoes: readonly DefinicaoParaVariavel[],
-  excluirChave?: string,
+  equipamentos: readonly EquipamentoParaVariavel[] = [],
 ): DescricaoDeVariavel[] {
   return [
-    ...perguntas.filter((p) => p.chave !== excluirChave).map((p) => variavelDaPergunta(p, definicoes)),
+    ...perguntas.map((p) => variavelDaPergunta(p, definicoes)),
     ...variaveisDoModelo(definicoes),
     ...VARIAVEIS_DA_INSTANCIA,
+    ...variaveisDoProjeto(equipamentos),
   ];
 }
