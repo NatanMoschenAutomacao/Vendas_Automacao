@@ -29,6 +29,7 @@ export type DonoDaRegra =
   | { tipo: "equipamento"; id: Id }
   | { tipo: "modelo"; id: Id }
   | { tipo: "tipoDePainel"; id: Id }
+  | { tipo: "controlador"; id: Id }
   | { tipo: "projeto" };
 
 export const BASES_DE_CALCULO = [
@@ -40,6 +41,7 @@ export const BASES_DE_CALCULO = [
   "por_grupo",
   "por_setor",
   "por_ambiente",
+  "por_controlador",
   "por_projeto",
 ] as const;
 export type BaseDeCalculo = (typeof BASES_DE_CALCULO)[number];
@@ -49,7 +51,8 @@ export const BASES_POR_DONO: Record<DonoDaRegra["tipo"], readonly BaseDeCalculo[
   equipamento: ["por_equipamento", "por_acionamento", "por_protecao", "uma_vez_por_item"],
   modelo: ["por_equipamento", "por_acionamento", "por_protecao", "uma_vez_por_item"],
   tipoDePainel: ["por_painel"],
-  projeto: ["por_projeto", "por_painel", "por_grupo", "por_setor", "por_ambiente"],
+  controlador: ["por_controlador"],
+  projeto: ["por_projeto", "por_painel", "por_grupo", "por_setor", "por_ambiente", "por_controlador"],
 };
 
 export type Arredondamento = "nenhum" | "cima" | "baixo" | "proximo";
@@ -79,7 +82,7 @@ export interface RegraNoSnapshot {
 /** De onde veio uma linha: rastreabilidade do §22. */
 export interface OrigemDaLinha {
   /** "fornecimento" = o próprio equipamento; "ajuste" = ajuste manual. */
-  tipo: "regra" | "fornecimento" | "ajuste";
+  tipo: "regra" | "fornecimento" | "ajuste" | "controlador";
   regraId?: Id;
   regraCodigo?: string;
   instanciaId?: Id;
@@ -87,6 +90,8 @@ export interface OrigemDaLinha {
   grupoId?: Id;
   setorId?: Id;
   ambienteId?: Id;
+  /** Controlador do projeto (id local), Fase 07. */
+  controladorId?: Id;
   base?: BaseDeCalculo;
   baseQuantidade?: number;
 }

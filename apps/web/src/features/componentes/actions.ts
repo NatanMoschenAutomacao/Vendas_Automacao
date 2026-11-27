@@ -76,11 +76,13 @@ export async function alternarAtivoItem(id: string) {
 export async function excluirItem(id: string): Promise<EstadoDoFormulario> {
   const u = await exigirPermissao(ACAO);
   idSchema.parse(id);
-  const [modelos, regras] = await Promise.all([
+  const [modelos, regras, controladores] = await Promise.all([
     db.modelo.count({ where: { itemId: id } }),
     db.regra.count({ where: { efeitos: { string_contains: id } } }),
+    db.controlador.count({ where: { itemId: id } }),
   ]);
-  if (modelos + regras > 0) return { ok: false, mensagem: "O item é usado por modelos ou regras. Inative-o em vez de excluir." };
+  if (modelos + regras + controladores > 0)
+    return { ok: false, mensagem: "O item é usado por modelos, regras ou como controlador. Inative-o em vez de excluir." };
   await db.$transaction(async (tx) => {
     const antes = await tx.itemDeCatalogo.delete({ where: { id } });
     await auditar(tx, { usuarioId: u.id, acao: "excluir", entidade: "item", entidadeId: id, antes });

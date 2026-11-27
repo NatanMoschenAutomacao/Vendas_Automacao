@@ -11,6 +11,7 @@ export const ROTULO_BASE: Record<BaseDeCalculo, string> = {
   por_grupo: "Por grupo de controle",
   por_setor: "Por setor",
   por_ambiente: "Por ambiente",
+  por_controlador: "Por controlador",
   por_projeto: "Uma vez por projeto",
 };
 
@@ -33,6 +34,7 @@ export const ROTULO_DONO: Record<DonoDaRegra["tipo"], string> = {
   equipamento: "Equipamento",
   modelo: "Modelo",
   tipoDePainel: "Tipo de painel",
+  controlador: "Controlador",
   projeto: "Projeto",
 };
 

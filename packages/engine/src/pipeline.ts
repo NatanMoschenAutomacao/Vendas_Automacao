@@ -3,6 +3,7 @@ import { resolverPerguntas } from "./perguntas/heranca";
 import { avaliarPerguntas, type ResultadoDasPerguntas } from "./perguntas/aplicabilidade";
 import { calcularEstrutura, contextoDeEstrutura } from "./estrutura/estrutura";
 import { calcularMateriais } from "./materiais/motor";
+import { calcularControladores } from "./controladores/controladores";
 import {
   ESTAGIOS,
   type ConfiguracaoDoProjeto,
@@ -92,6 +93,10 @@ export function calcular(
   });
   pendencias.push(...dosMateriais);
 
+  // Estágio 4: controladores (funções, recursos por controlador e compatibilidade).
+  const { controladores, pendencias: dosControladores } = calcularControladores(config, snapshot, materiais.sinais);
+  pendencias.push(...dosControladores);
+
   for (const inst of config.instancias) {
     if (!Number.isInteger(inst.quantidade) || inst.quantidade < 1) {
       pendencias.push({
@@ -118,5 +123,5 @@ export function calcular(
       a.mensagem.localeCompare(b.mensagem),
   );
 
-  return { pendencias, perguntas, estrutura, materiais, estagios: [...ESTAGIOS] };
+  return { pendencias, perguntas, estrutura, materiais, controladores, estagios: [...ESTAGIOS] };
 }

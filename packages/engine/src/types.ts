@@ -12,6 +12,7 @@ import type { Pergunta, PerguntaDeModelo, ValorDeResposta } from "./perguntas/ti
 import type { ResultadoDasPerguntas } from "./perguntas/aplicabilidade";
 import type { ResultadoDaEstrutura } from "./estrutura/estrutura";
 import type { AjusteManual, ItemNoSnapshot, RegraNoSnapshot, ResultadoDeMateriais, TipoDeRecursoNoSnapshot } from "./materiais/tipos";
+import type { ControladorNoProjeto, ControladorNoSnapshot, ResultadoDosControladores } from "./controladores/tipos";
 
 export type Id = string;
 
@@ -26,6 +27,8 @@ export interface ConfiguracaoDoProjeto {
   grupos?: GrupoDeControle[];
   /** Ajustes manuais da lista de materiais (Fase 06). */
   ajustes?: AjusteManual[];
+  /** Controladores escolhidos para o projeto (Fase 07). */
+  controladores?: ControladorNoProjeto[];
 }
 
 export interface Ambiente {
@@ -55,6 +58,8 @@ export interface GrupoDeControle {
   nome: string;
   funcaoId: Id | null;
   membros: MembroDeGrupo[];
+  /** Controlador do projeto responsável pelo grupo (Fase 07). */
+  controladorId?: Id | null;
 }
 
 export interface MembroDeGrupo {
@@ -77,6 +82,8 @@ export interface InstanciaDeEquipamento {
   ambientes?: Id[];
   setorId?: Id | null;
   painelId?: Id | null;
+  /** Controlador do projeto ligado diretamente (sensores, itens fora de grupo). Fase 07. */
+  controladorId?: Id | null;
 }
 
 /** Como acionamentos e proteções são derivados de um modelo (§18). */
@@ -133,6 +140,7 @@ export interface SnapshotDaBiblioteca {
   itens?: Record<Id, ItemNoSnapshot>;
   tiposDeRecurso?: Record<Id, TipoDeRecursoNoSnapshot>;
   regras?: RegraNoSnapshot[];
+  controladores?: Record<Id, ControladorNoSnapshot>;
 }
 
 export type Gravidade = "informativa" | "advertencia" | "impeditiva";
@@ -153,6 +161,8 @@ export interface ResultadoDoCalculo {
   estrutura: ResultadoDaEstrutura;
   /** Materiais, consolidação e lista preliminar de I/O (Fase 06). */
   materiais: ResultadoDeMateriais;
+  /** Análise dos controladores do projeto (Fase 07). */
+  controladores: ResultadoDosControladores;
   /** Estágios executados, na ordem. Útil para depuração e testes. */
   estagios: NomeDoEstagio[];
 }

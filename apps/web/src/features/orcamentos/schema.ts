@@ -43,6 +43,7 @@ const instanciaSchema = z.object({
   ambientes: z.array(z.string().min(1).max(64)).max(100).optional(),
   setorId: z.string().min(1).max(64).nullable().optional(),
   painelId: z.string().min(1).max(64).nullable().optional(),
+  controladorId: z.string().min(1).max(64).nullable().optional(),
 });
 
 const idLocal = z.string().min(1).max(64);
@@ -73,9 +74,22 @@ export const configuracaoSchema = z.object({
         nome,
         funcaoId: z.uuid().nullable(),
         membros: z.array(z.object({ instanciaId: idLocal, quantidade: z.number().int().min(0).max(100_000) })).max(500),
+        controladorId: idLocal.nullable().optional(),
       }),
     )
     .max(200)
+    .optional(),
+  controladores: z
+    .array(
+      z.object({
+        id: idLocal,
+        nome,
+        controladorId: z.uuid().nullable(),
+        painelId: idLocal.nullable(),
+        distribuicao: z.record(idLocal, z.uuid()).optional(),
+      }),
+    )
+    .max(100)
     .optional(),
   ajustes: z
     .array(

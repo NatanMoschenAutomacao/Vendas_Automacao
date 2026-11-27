@@ -25,6 +25,8 @@ function validarFormula(texto: string, nomes: ReadonlySet<string>): string | nul
 export function validarRegra(d: DadosDaRegra, ctx: ContextoDaRegra): Record<string, string> {
   const erros: Record<string, string> = {};
   if (!BASES_POR_DONO[ctx.dono].includes(d.base)) erros.base = "Essa base não se aplica a este dono.";
+  if ((ctx.dono === "controlador" || d.base === "por_controlador") && d.estagio !== "material")
+    erros.estagio = "Regras por controlador são de material: os recursos são calculados antes da escolha do controlador.";
   const variaveis = variaveisDaRegra(ctx.comuns, ctx.dono, d.base);
   const nomes = new Set(variaveis.map((v) => v.nome));
   if (d.condicao) {

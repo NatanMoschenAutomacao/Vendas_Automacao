@@ -8,6 +8,12 @@ export const VARIAVEIS_DO_PAINEL: DescricaoDeVariavel[] = [
   { nome: "painel.equipamentos", rotulo: "Painel › Equipamentos ligados", tipo: "numero" },
 ];
 
+export const VARIAVEIS_DO_CONTROLADOR: DescricaoDeVariavel[] = [
+  { nome: "controlador.tipo", rotulo: "Controlador › Tipo", tipo: "lista", opcoes: ["convencional", "digital", "clp", "irrigacao", "ihm"] },
+  { nome: "controlador.codigo", rotulo: "Controlador › Código do item", tipo: "texto" },
+  { nome: "controlador.grupos", rotulo: "Controlador › Grupos ligados", tipo: "numero" },
+];
+
 export const VARIAVEL_FUNCAO_DO_GRUPO: DescricaoDeVariavel = {
   nome: "projeto.funcao_do_grupo",
   rotulo: "Grupo › Código da função de controle",
@@ -22,6 +28,7 @@ export function variaveisDaRegra(comuns: readonly DescricaoDeVariavel[], dono: D
   const lista: DescricaoDeVariavel[] = [VARIAVEL_BASE, ...comuns];
   if (dono === "tipoDePainel" || base === "por_painel") lista.push(...VARIAVEIS_DO_PAINEL);
   if (base === "por_grupo") lista.push(VARIAVEL_FUNCAO_DO_GRUPO);
+  if (dono === "controlador" || base === "por_controlador") lista.push(...VARIAVEIS_DO_PAINEL, ...VARIAVEIS_DO_CONTROLADOR);
   const vistos = new Set<string>();
   return lista.filter((v) => (vistos.has(v.nome) ? false : (vistos.add(v.nome), true)));
 }
