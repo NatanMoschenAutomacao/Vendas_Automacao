@@ -14,6 +14,21 @@ export interface ItemNoSnapshot {
   /** Unidade que aceita fração (m, kg). Itens não fracionáveis são sempre arredondados para cima. */
   fracionavel: boolean;
   ativo: boolean;
+  /** Grupo comercial do item: material (padrão) ou software (Fase 09). */
+  grupo?: "material" | "software";
+}
+
+/** Serviço do catálogo (Fase 09). Valor é sempre venda fixa; custo é opcional. */
+export interface ServicoNoSnapshot {
+  id: Id;
+  codigo: string;
+  descricao: string;
+  unidade: string;
+  fracionavel: boolean;
+  /** Decimal em texto ("1234.5"). Null = sem preço. */
+  valor: string | null;
+  custo: string | null;
+  ativo: boolean;
 }
 
 export interface TipoDeRecursoNoSnapshot {
@@ -62,14 +77,15 @@ export type EfeitoDaRegra =
   | { acao: "substituir"; itemId: Id; substitutoId: Id }
   | { acao: "quantidade"; itemId: Id; formula: string; arredondamento: Arredondamento }
   | { acao: "remover"; itemId: Id }
-  | { acao: "recurso"; tipoRecursoId: Id; funcao: string | null; formula: string };
+  | { acao: "recurso"; tipoRecursoId: Id; funcao: string | null; formula: string }
+  | { acao: "servico"; servicoId: Id; formula: string; arredondamento: Arredondamento };
 
 export interface RegraNoSnapshot {
   id: Id;
   codigo: string;
   nome: string;
   dono: DonoDaRegra;
-  estagio: "recurso" | "material";
+  estagio: "recurso" | "material" | "servico";
   base: BaseDeCalculo;
   condicao: Condicao | null;
   prioridade: number;
@@ -81,8 +97,8 @@ export interface RegraNoSnapshot {
 
 /** De onde veio uma linha: rastreabilidade do §22. */
 export interface OrigemDaLinha {
-  /** "fornecimento" = o próprio equipamento; "ajuste" = ajuste manual. */
-  tipo: "regra" | "fornecimento" | "ajuste" | "controlador" | "cartao";
+  /** "fornecimento" = o próprio equipamento; "ajuste" = ajuste manual; "manual" = serviço incluído à mão. */
+  tipo: "regra" | "fornecimento" | "ajuste" | "controlador" | "cartao" | "manual";
   regraId?: Id;
   regraCodigo?: string;
   instanciaId?: Id;
@@ -107,6 +123,17 @@ export interface LinhaDeMaterial {
   origem: OrigemDaLinha;
   /** Ajuste manual aplicado sobre a linha, se houver. */
   ajustadaPor?: Id;
+}
+
+/** Linha de serviço gerada por regra (estágio de serviços) ou incluída à mão. */
+export interface LinhaDeServico {
+  chave: string;
+  servicoId: Id;
+  codigo: string;
+  descricao: string;
+  unidade: string;
+  quantidade: number;
+  origem: OrigemDaLinha;
 }
 
 export interface LinhaConsolidada {
@@ -157,4 +184,6 @@ export interface ResultadoDeMateriais {
   consolidado: LinhaConsolidada[];
   sinais: SinalDeIO[];
   io: ResumoDeIO[];
+  /** Serviços gerados por regras e incluídos à mão (Fase 09). */
+  servicos: LinhaDeServico[];
 }

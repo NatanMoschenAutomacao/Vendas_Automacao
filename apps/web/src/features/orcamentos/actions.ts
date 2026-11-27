@@ -10,6 +10,8 @@ import { auditar } from "@/server/audit";
 import type { EstadoDoFormulario } from "@/ui/form-status";
 import { CONFIGURACAO_VAZIA, configuracaoSchema, dadosBasicosSchema } from "./schema";
 import { filtroDeAcesso } from "./queries";
+import { lerLimiteDeDesconto } from "@/features/precos/dados";
+import { verificarLimiteDeDesconto } from "@/features/precos/limite";
 
 const idSchema = z.uuid();
 
@@ -110,8 +112,18 @@ export async function salvarRascunho(id: string, json: string): Promise<Resultad
   }
   const config = configuracaoSchema.safeParse(bruto);
   if (!config.success) return { ok: false, erro: config.error.issues[0]?.message ?? "Configuração inválida." };
+  const descontoLivre = pode(u.perfil, "precos:desconto-livre");
+  const limite = descontoLivre ? null : await lerLimiteDeDesconto();
   const r = await db.$transaction(async (tx) => {
     const rev = await tx.revisao.findFirst({ where: { orcamentoId: id }, orderBy: { numero: "desc" } });
+    type Comercial = NonNullable<typeof config.data.comercial>;
+    const comercialAnterior = ((rev?.configuracao as { comercial?: Comercial } | null)?.comercial?.ajustes ?? []) as NonNullable<Comercial["ajustes"]>;
+    // Limite de desconto do vendedor: vale no servidor, não só na tela (§43).
+    if (limite) {
+      const erro = verificarLimiteDeDesconto(config.data.comercial?.ajustes ?? [], comercialAnterior, limite.percentual);
+      if (erro) return { erro };
+    }
+    const comercialPorId = new Map(comercialAnterior.map((a) => [a.id, a]));
     // Autor e data dos ajustes manuais vêm do servidor, nunca do navegador.
     const anteriores = new Map(
       (((rev?.configuracao as { ajustes?: { id: string; autor?: string | null; data?: string | null }[] } | null)?.ajustes) ?? []).map((a) => [a.id, a]),
@@ -123,6 +135,17 @@ export async function salvarRascunho(id: string, json: string): Promise<Resultad
     const dados = {
       ...config.data,
       reserva,
+      ...(config.data.comercial
+        ? {
+            comercial: {
+              ...config.data.comercial,
+              ajustes: config.data.comercial.ajustes?.map((a) => {
+                const antes = comercialPorId.get(a.id);
+                return { ...a, autor: antes ? (antes.autor ?? null) : u.nome, data: antes ? (antes.data ?? null) : agora };
+              }),
+            },
+          }
+        : {}),
       ajustes: config.data.ajustes?.map((a) => {
         const antes = anteriores.get(a.id);
         return { ...a, autor: antes ? (antes.autor ?? null) : u.nome, data: antes ? (antes.data ?? null) : agora };
@@ -132,9 +155,10 @@ export async function salvarRascunho(id: string, json: string): Promise<Resultad
       ? await tx.revisao.update({ where: { id: rev.id }, data: { configuracao: dados } })
       : await tx.revisao.create({ data: { orcamentoId: id, numero: 1, configuracao: dados } });
     await tx.orcamento.update({ where: { id }, data: { atualizadoEm: new Date() } });
-    return salva;
+    return { salva };
   });
-  return { ok: true, salvoEm: r.salvoEm.toISOString() };
+  if (!r.salva) return { ok: false, erro: r.erro ?? "Não foi possível salvar." };
+  return { ok: true, salvoEm: r.salva.salvoEm.toISOString() };
 }
 
 export async function excluirOrcamento(id: string) {

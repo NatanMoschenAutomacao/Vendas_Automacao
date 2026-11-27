@@ -18,6 +18,7 @@ import type {
   EfeitoDaRegra,
   LinhaConsolidada,
   LinhaDeMaterial,
+  LinhaDeServico,
   OrigemDaLinha,
   RegraNoSnapshot,
   ResultadoDeMateriais,
@@ -104,8 +105,8 @@ export function calcularMateriais(
         });
       }
     } else if (dono.tipo === "controlador" || regra.base === "por_controlador") {
-      // Controladores só existem depois do estágio de recursos: regras deles são de material.
-      if (regra.estagio !== "material") continue;
+      // Controladores só existem depois do estágio de recursos: regras deles são de material ou serviço.
+      if (regra.estagio === "recurso") continue;
       for (const cp of config.controladores ?? []) {
         if (!cp.controladorId) continue;
         if (dono.tipo === "controlador" && cp.controladorId !== dono.id) continue;
@@ -452,6 +453,43 @@ export function calcularMateriais(
     }
   }
 
+  /* ───────────── Serviços: regras do estágio de serviços e inclusões manuais (Fase 09) ───────────── */
+  const servicos: LinhaDeServico[] = [];
+  const servicoValido = (a: Avaliacao | null, servicoId: Id, referencia?: Id) => {
+    const s = snapshot.servicos?.[servicoId];
+    if (s?.ativo) return s;
+    pendencias.push({
+      codigo: "SERVICO_INDISPONIVEL",
+      gravidade: "impeditiva",
+      mensagem: a ? `A regra ${a.regra.codigo} usa um serviço removido ou inativo.` : "Um serviço incluído foi removido ou inativado.",
+      referencia: referencia ?? a?.origem.instanciaId ?? a?.regra.id,
+    });
+    return null;
+  };
+  for (const a of disparadas) {
+    if (a.regra.estagio !== "servico") continue;
+    for (const [n, ef] of a.regra.efeitos.entries()) {
+      if (ef.acao !== "servico") continue;
+      const s = servicoValido(a, ef.servicoId);
+      if (!s) continue;
+      const v = avaliar(a, ef.formula);
+      if (v === null) continue;
+      const q = arredondar(v, ef.arredondamento, s.fracionavel);
+      if (q <= 0) continue;
+      servicos.push({ chave: `${a.regra.codigo}#${n}:${a.chaveDoContexto}:${s.codigo}`, servicoId: s.id, codigo: s.codigo, descricao: s.descricao, unidade: s.unidade, quantidade: q, origem: a.origem });
+    }
+  }
+  for (const sp of config.servicos ?? []) {
+    const s = servicoValido(null, sp.servicoId, sp.id);
+    if (!s) continue;
+    const q = Number(sp.quantidade);
+    if (!(q > 0)) {
+      pendencias.push({ codigo: "SERVICO_QUANTIDADE_INVALIDA", gravidade: "impeditiva", mensagem: `Informe uma quantidade maior que zero para ${s.codigo}.`, referencia: sp.id });
+      continue;
+    }
+    servicos.push({ chave: `servico:${sp.id}`, servicoId: s.id, codigo: s.codigo, descricao: s.descricao, unidade: s.unidade, quantidade: arredondar(q, "nenhum", s.fracionavel), origem: { tipo: "manual" } });
+  }
+
   /* ───────────── Totalização: item + unidade, nunca a descrição ───────────── */
   const consolidado = new Map<string, LinhaConsolidada>();
   for (const l of finais) {
@@ -476,6 +514,7 @@ export function calcularMateriais(
       consolidado: [...consolidado.values()].sort((a, b) => a.codigo.localeCompare(b.codigo)),
       sinais,
       io: [...io.values()],
+      servicos,
     },
     pendencias,
   };

@@ -25,6 +25,7 @@ describe("importação de itens por planilha", () => {
         descricao: "Cabo DEMO",
         unidade: "m",
         fracionavel: true,
+        grupoComercial: "MATERIAL",
         codigoFabricante: null,
         fabricante: null,
         modelo: null,
@@ -34,6 +35,25 @@ describe("importação de itens por planilha", () => {
     });
     expect(r.linhas[1]!.erro).toMatch(/^codigo:/);
     expect(r.linhas[2]!.erro).toBe("código DM-1 repetido na planilha.");
+  });
+
+  it("lê preços e grupo comercial; deduz o modo pelas colunas preenchidas", () => {
+    const r = interpretarPlanilha(
+      [
+        "codigo;descricao;unidade;grupo;custo;venda;modo",
+        "DM-A;Item DEMO A;pç;;10,50;;",
+        "DM-B;Item DEMO B;pç;software;;1.234,56;",
+        "DM-C;Item DEMO C;pç;;5;;venda fixa",
+        "DM-D;Item DEMO D;pç;;abc;;",
+        "DM-E;Item DEMO E;pç;;;;",
+      ].join("\n"),
+    );
+    expect(r.linhas[0]!.preco).toEqual({ modo: "custo_regra", custo: "10.50", venda: null });
+    expect(r.linhas[1]!.preco).toEqual({ modo: "venda_fixa", custo: null, venda: "1234.56" });
+    expect(r.linhas[1]!.dados!.grupoComercial).toBe("SOFTWARE");
+    expect(r.linhas[2]!.erro).toBe("venda fixa exige a coluna venda.");
+    expect(r.linhas[3]!.erro).toMatch(/use um número/);
+    expect(r.linhas[4]!.preco).toBeUndefined();
   });
 
   it("exige as colunas obrigatórias", () => {

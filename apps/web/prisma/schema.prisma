@@ -446,6 +446,8 @@ model ItemDeCatalogo {
   /// Aceita quantidade fracionada (m, kg). Senão, sempre arredonda para cima.
   fracionavel      Boolean                @default(false)
   fornecedor       String?
+  /// Grupo comercial para descontos e impostos (Fase 09).
+  grupoComercial   GrupoComercial         @default(MATERIAL)
   atributos        Json                   @default("{}")
   categoriaId      String?                @db.Uuid
   categoria        CategoriaDeComponente? @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
@@ -457,6 +459,7 @@ model ItemDeCatalogo {
   modelos     Modelo[]
   controlador Controlador?
   cartao      CartaoDeExpansao?
+  precos      PrecoDoItem[]
 
   @@index([descricao])
   @@map("itens_de_catalogo")
@@ -493,6 +496,7 @@ enum DonoDeRegra {
 enum EstagioDeRegra {
   RECURSO
   MATERIAL
+  SERVICO
 }
 
 /// Regra única para recursos e materiais: condição + base de cálculo + efeitos + prioridade (§20).
@@ -626,4 +630,53 @@ model RecursoDoCartao {
 
   @@id([cartaoId, tipoRecursoId])
   @@map("recursos_do_cartao")
+}
+
+/* ───────────── Fase 09: precificação ───────────── */
+
+enum GrupoComercial {
+  MATERIAL
+  SOFTWARE
+}
+
+/// Venda fixa (usa o preço de venda) ou custo + regra comercial (markup ou margem). Nunca os dois.
+enum ModoDePreco {
+  VENDA_FIXA
+  CUSTO_REGRA
+}
+
+/// Histórico de preços do item. O vigente é o de maior "vigenteDesde" que já começou.
+model PrecoDoItem {
+  id            String         @id @default(uuid()) @db.Uuid
+  itemId        String         @db.Uuid
+  item          ItemDeCatalogo @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  custo         Decimal?       @db.Decimal(14, 4)
+  modo          ModoDePreco
+  venda         Decimal?       @db.Decimal(14, 4)
+  vigenteDesde  DateTime
+  atualizadoPor String?
+  observacao    String?
+  isDemo        Boolean        @default(false)
+  criadoEm      DateTime       @default(now())
+
+  @@index([itemId, vigenteDesde])
+  @@map("precos_dos_itens")
+}
+
+/// Serviço do catálogo, incluído por regra (estágio de serviços) ou à mão no orçamento.
+model Servico {
+  id           String   @id @default(uuid()) @db.Uuid
+  codigo       String   @unique
+  descricao    String
+  unidade      String   @default("h")
+  fracionavel  Boolean  @default(true)
+  /// Valor de venda (sempre venda fixa). Null = sem preço.
+  valor        Decimal? @db.Decimal(14, 4)
+  custo        Decimal? @db.Decimal(14, 4)
+  ativo        Boolean  @default(true)
+  isDemo       Boolean  @default(false)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@map("servicos")
 }

@@ -9,7 +9,7 @@ import { exigirPermissao } from "@/server/auth/dal";
 import { auditar } from "@/server/audit";
 import type { EstadoDoFormulario } from "@/ui/form-status";
 import { carregarDono, donoDoBanco, donoParaBanco, lerDono } from "./dados";
-import { regraSchema } from "./schema";
+import { ESTAGIO_PARA_BANCO, regraSchema } from "./schema";
 import { validarRegra } from "./validacao";
 
 const ACAO = "biblioteca:gerenciar" as const;
@@ -57,24 +57,27 @@ export async function salvarRegra(
   const ctxDono = await carregarDono(dono);
   if (!ctxDono) return { mensagem: "O dono da regra não existe mais." };
 
-  const ids = d.data.efeitos.flatMap((e) => (e.acao === "recurso" ? [] : e.acao === "substituir" ? [e.itemId, e.substitutoId] : [e.itemId]));
+  const ids = d.data.efeitos.flatMap((e) => (e.acao === "recurso" || e.acao === "servico" ? [] : e.acao === "substituir" ? [e.itemId, e.substitutoId] : [e.itemId]));
+  const servicosIds = d.data.efeitos.flatMap((e) => (e.acao === "servico" ? [e.servicoId] : []));
   const recursosIds = d.data.efeitos.flatMap((e) => (e.acao === "recurso" ? [e.tipoRecursoId] : []));
-  const [itens, recursos] = await Promise.all([
+  const [itens, recursos, servicos] = await Promise.all([
     db.itemDeCatalogo.findMany({ where: { id: { in: ids } }, select: { id: true } }),
     db.tipoDeRecurso.findMany({ where: { id: { in: recursosIds } }, select: { id: true } }),
+    db.servico.findMany({ where: { id: { in: servicosIds } }, select: { id: true } }),
   ]);
   const erros = validarRegra(d.data, {
     dono: dono.tipo,
     comuns: ctxDono.comuns,
     itens: new Set(itens.map((i) => i.id)),
     recursos: new Set(recursos.map((r) => r.id)),
+    servicos: new Set(servicos.map((s) => s.id)),
   });
   if (Object.keys(erros).length) return { erros, mensagem: "Corrija os campos destacados." };
 
   const dados = {
     ...d.data,
     condicao: d.data.condicao ?? Prisma.DbNull,
-    estagio: d.data.estagio === "recurso" ? ("RECURSO" as const) : ("MATERIAL" as const),
+    estagio: ESTAGIO_PARA_BANCO[d.data.estagio],
     efeitos: d.data.efeitos as unknown as Prisma.InputJsonValue,
   };
   try {

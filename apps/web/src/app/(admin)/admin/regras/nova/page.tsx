@@ -18,7 +18,7 @@ export default async function PaginaNovaRegra({ searchParams }: PageProps<"/admi
   if (!dono) notFound();
   const [ctx, opcoes] = await Promise.all([carregarDono(dono), carregarOpcoesDoEditor()]);
   if (!ctx) notFound();
-  const estagio = sp.estagio === "recurso" ? "recurso" : "material";
+  const estagio = sp.estagio === "recurso" ? "recurso" : sp.estagio === "servico" ? "servico" : "material";
   return (
     <>
       <Link href={ctx.voltar} className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-grafite-800">
@@ -32,6 +32,7 @@ export default async function PaginaNovaRegra({ searchParams }: PageProps<"/admi
           comuns={ctx.comuns}
           itens={opcoes.itens}
           recursos={opcoes.recursos}
+          servicos={opcoes.servicos}
           salvar={salvarRegra.bind(null, dono, null)}
         />
       </Card>

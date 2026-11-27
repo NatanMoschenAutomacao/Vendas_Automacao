@@ -49,6 +49,20 @@ const instanciaSchema = z.object({
 const idLocal = z.string().min(1).max(64);
 const nome = z.string().max(120);
 
+const decimalTexto = z.string().max(20).regex(/^\d+(\.\d{1,4})?$/, "Valor inválido.");
+const textoComercial = z.string().max(1000).nullable().optional();
+
+export const ajusteComercialSchema = z.object({
+  id: idLocal,
+  tipo: z.enum(["desconto", "acrescimo"]),
+  escopo: z.enum(["material", "servico", "software", "total"]),
+  modo: z.enum(["percentual", "valor"]),
+  valor: decimalTexto,
+  justificativa: z.string().max(500),
+  autor: z.string().max(120).nullable().optional(),
+  data: z.string().max(40).nullable().optional(),
+});
+
 /** Configuração salva no rascunho (entrada do motor). */
 export const configuracaoSchema = z.object({
   schemaVersion: z.literal(1),
@@ -113,6 +127,19 @@ export const configuracaoSchema = z.object({
       }),
     )
     .max(500)
+    .optional(),
+  servicos: z
+    .array(z.object({ id: idLocal, servicoId: z.uuid(), quantidade: z.number().finite().min(0).max(1_000_000) }))
+    .max(200)
+    .optional(),
+  comercial: z
+    .object({
+      ajustes: z.array(ajusteComercialSchema).max(50).optional(),
+      condicoesDePagamento: textoComercial,
+      prazoDeEntrega: textoComercial,
+      garantia: textoComercial,
+      validade: textoComercial,
+    })
     .optional(),
 });
 

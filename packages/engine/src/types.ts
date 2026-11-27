@@ -11,7 +11,8 @@
 import type { Pergunta, PerguntaDeModelo, ValorDeResposta } from "./perguntas/tipos";
 import type { ResultadoDasPerguntas } from "./perguntas/aplicabilidade";
 import type { ResultadoDaEstrutura } from "./estrutura/estrutura";
-import type { AjusteManual, ItemNoSnapshot, RegraNoSnapshot, ResultadoDeMateriais, TipoDeRecursoNoSnapshot } from "./materiais/tipos";
+import type { AjusteManual, ItemNoSnapshot, RegraNoSnapshot, ResultadoDeMateriais, ServicoNoSnapshot, TipoDeRecursoNoSnapshot } from "./materiais/tipos";
+import type { DadosComerciais, Imposto, PrecoNoSnapshot, RegraComercial, ResultadoDePrecos, ServicoNoProjeto } from "./precos/tipos";
 import type { CartaoNoSnapshot, ControladorNoProjeto, ControladorNoSnapshot, ReservaTecnica, ResultadoDosControladores } from "./controladores/tipos";
 
 export type Id = string;
@@ -31,6 +32,10 @@ export interface ConfiguracaoDoProjeto {
   controladores?: ControladorNoProjeto[];
   /** Reserva técnica do projeto (só o administrador técnico altera). Null = padrão global. Fase 08. */
   reserva?: ReservaTecnica | null;
+  /** Serviços incluídos à mão (Fase 09). */
+  servicos?: ServicoNoProjeto[];
+  /** Descontos, acréscimos e condições comerciais (Fase 09). */
+  comercial?: DadosComerciais;
 }
 
 export interface Ambiente {
@@ -146,6 +151,13 @@ export interface SnapshotDaBiblioteca {
   cartoes?: Record<Id, CartaoNoSnapshot>;
   /** Reserva técnica padrão das configurações gerais. */
   reservaPadrao?: ReservaTecnica | null;
+  /** Fase 09: catálogo de serviços, preços vigentes por item, regra comercial e impostos. */
+  servicos?: Record<Id, ServicoNoSnapshot>;
+  precos?: Record<Id, PrecoNoSnapshot>;
+  regraComercial?: RegraComercial | null;
+  impostos?: Imposto[];
+  /** O servidor removeu custos e regra comercial (perfil sem "precos:ver-custo"). */
+  custosOcultos?: boolean;
 }
 
 export type Gravidade = "informativa" | "advertencia" | "impeditiva";
@@ -168,6 +180,8 @@ export interface ResultadoDoCalculo {
   materiais: ResultadoDeMateriais;
   /** Análise dos controladores do projeto (Fase 07). */
   controladores: ResultadoDosControladores;
+  /** Preços, totais, descontos e impostos (Fase 09). */
+  precos: ResultadoDePrecos;
   /** Estágios executados, na ordem. Útil para depuração e testes. */
   estagios: NomeDoEstagio[];
 }

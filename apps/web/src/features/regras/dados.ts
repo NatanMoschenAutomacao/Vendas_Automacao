@@ -83,9 +83,10 @@ export async function carregarDono(dono: DonoDaRegra): Promise<ContextoDoDono | 
 
 /** Itens e tipos de recurso que o editor oferece. */
 export async function carregarOpcoesDoEditor() {
-  const [itens, recursos] = await Promise.all([
+  const [itens, recursos, servicos] = await Promise.all([
     db.itemDeCatalogo.findMany({ orderBy: { codigo: "asc" }, select: { id: true, codigo: true, descricao: true, unidade: true, ativo: true } }),
     db.tipoDeRecurso.findMany({ orderBy: [{ ordem: "asc" }, { codigo: "asc" }], select: { id: true, codigo: true, nome: true, ativo: true } }),
+    db.servico.findMany({ orderBy: { codigo: "asc" }, select: { id: true, codigo: true, descricao: true, unidade: true, ativo: true } }),
   ]);
-  return { itens, recursos };
+  return { itens, recursos, servicos };
 }

@@ -4,6 +4,7 @@ import { avaliarPerguntas, type ResultadoDasPerguntas } from "./perguntas/aplica
 import { calcularEstrutura, contextoDeEstrutura } from "./estrutura/estrutura";
 import { calcularMateriais } from "./materiais/motor";
 import { calcularControladores } from "./controladores/controladores";
+import { calcularPrecos } from "./precos/precos";
 import type { ResultadoDosControladores } from "./controladores/tipos";
 import type { LinhaDeMaterial } from "./materiais/tipos";
 import {
@@ -135,6 +136,10 @@ export function calcular(
   const { controladores, pendencias: dosControladores } = doEstagio4 ?? calcularControladores(config, snapshot, materiais.sinais);
   pendencias.push(...dosMateriais, ...dosControladores);
 
+  // Estágio 7: preços.
+  const { precos, pendencias: dosPrecos } = calcularPrecos(config, snapshot, materiais);
+  pendencias.push(...dosPrecos);
+
   for (const inst of config.instancias) {
     if (!Number.isInteger(inst.quantidade) || inst.quantidade < 1) {
       pendencias.push({
@@ -161,5 +166,5 @@ export function calcular(
       a.mensagem.localeCompare(b.mensagem),
   );
 
-  return { pendencias, perguntas, estrutura, materiais, controladores, estagios: [...ESTAGIOS] };
+  return { pendencias, perguntas, estrutura, materiais, controladores, precos, estagios: [...ESTAGIOS] };
 }
