@@ -8,13 +8,23 @@ pela equipe de automação.
 Planejamento completo da arquitetura: [documento de planejamento](https://claude.ai/artifact/32icxuVX7dsHpN7DCBLKUg)
 e resumo em [`docs/decisoes/0001-arquitetura.md`](docs/decisoes/0001-arquitetura.md).
 
-## Estado atual: Fase 01 (estrutura inicial)
+## Estado atual: Fases 01 a 11
 
-- Login por usuário e senha, com dois perfis (administrador técnico e vendedor) e permissões verificadas no servidor.
-- Área comercial (tela inicial) e área administrativa com navegação.
-- Cadastro real de categorias e sistemas (criar, editar, mover, duplicar, inativar, excluir) e de usuários.
-- Pacote `@zanatta/engine` com o contrato do motor de cálculo e o pipeline de estágios.
-- Testes unitários (Vitest) e de interface (Playwright), CI no GitHub Actions.
+- **Biblioteca técnica:** categorias, equipamentos e modelos com características, imagens, perguntas dinâmicas com herança e condições, kits e imagens interativas.
+- **Configurador do vendedor:** seleção visual, quantidades, perguntas, ambientes, setores, painéis, grupos de controle e rascunho automático.
+- **Motor de cálculo** (`@zanatta/engine`, sem I/O):
+  - regras de composição e recursos de automação;
+  - lista de materiais totalizada e detalhada, lista de I/O e ajustes manuais;
+  - controladores, saídas funcionais e compatibilidade;
+  - reserva técnica e busca de combinações de cartões;
+  - preços em decimal exato, descontos e impostos;
+  - descritivo técnico e pendências.
+- **Comercial:** preços com histórico (venda fixa ou custo + regra), serviços, regra comercial, impostos e limite de desconto do vendedor. O vendedor nunca recebe custo.
+- **Documentos:** proposta e orçamento interno em PDF e Excel. Status Rascunho → Aguardando validação → Validado → Emitido, com emissão congelada e novas revisões.
+- **Testes:** unitários (Vitest) e de interface (Playwright), fase a fase. Veja [`docs/validacao/cenarios.md`](docs/validacao/cenarios.md).
+- **Próximo passo:** homologação com dados reais, em [`docs/validacao/roteiro-de-homologacao.md`](docs/validacao/roteiro-de-homologacao.md).
+
+Regras documentadas: [`autenticação`](docs/regras/autenticacao.md), [`precificação`](docs/regras/precificacao.md) e [`documentos`](docs/regras/documentos.md).
 
 ## Estrutura
 
