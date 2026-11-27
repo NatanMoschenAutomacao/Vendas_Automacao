@@ -456,6 +456,7 @@ model ItemDeCatalogo {
 
   modelos     Modelo[]
   controlador Controlador?
+  cartao      CartaoDeExpansao?
 
   @@index([descricao])
   @@map("itens_de_catalogo")
@@ -476,6 +477,7 @@ model TipoDeRecurso {
   atualizadoEm DateTime @updatedAt
 
   controladores RecursoDoControlador[]
+  cartoes       RecursoDoCartao[]
 
   @@map("tipos_de_recurso")
 }
@@ -546,11 +548,17 @@ model Controlador {
   tensoes      Int[]
   protocolos   String[]
   observacoes  String?
+  /// Expansão (Fase 08).
+  barramento           String?
+  maxModulos           Int?
+  /// Consumo máximo do barramento (mA).
+  consumoMaxBarramento Int?
   ativo        Boolean           @default(true)
   isDemo       Boolean           @default(false)
   criadoEm     DateTime          @default(now())
   atualizadoEm DateTime          @updatedAt
 
+  cartoesCompativeis CartaoDeExpansao[]     @relation("CartoesCompativeis")
   recursos           RecursoDoControlador[]
   saidas             SaidaFuncional[]
   modelosCompativeis Modelo[]               @relation("ModelosCompativeis")
@@ -583,4 +591,39 @@ model SaidaFuncional {
 
   @@unique([controladorId, codigo])
   @@map("saidas_funcionais")
+}
+
+/* ───────────── Fase 08: CLPs, cartões e configurações ───────────── */
+
+/// Cartão de expansão: extensão 1:1 de um item do catálogo.
+model CartaoDeExpansao {
+  id           String         @id @default(uuid()) @db.Uuid
+  itemId       String         @unique @db.Uuid
+  item         ItemDeCatalogo @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  barramento   String?
+  /// Consumo no barramento (mA).
+  consumo      Int?
+  /// Tipo de sinal ou de saída (relé, transistor, 4–20 mA…), como na ficha técnica.
+  tipoDeSinal  String?
+  observacoes  String?
+  ativo        Boolean        @default(true)
+  isDemo       Boolean        @default(false)
+  criadoEm     DateTime       @default(now())
+  atualizadoEm DateTime       @updatedAt
+
+  recursos      RecursoDoCartao[]
+  controladores Controlador[]     @relation("CartoesCompativeis")
+
+  @@map("cartoes_de_expansao")
+}
+
+model RecursoDoCartao {
+  cartaoId      String           @db.Uuid
+  cartao        CartaoDeExpansao @relation(fields: [cartaoId], references: [id], onDelete: Cascade)
+  tipoRecursoId String           @db.Uuid
+  tipoRecurso   TipoDeRecurso    @relation(fields: [tipoRecursoId], references: [id], onDelete: Cascade)
+  quantidade    Int
+
+  @@id([cartaoId, tipoRecursoId])
+  @@map("recursos_do_cartao")
 }

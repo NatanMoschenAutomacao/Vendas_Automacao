@@ -86,6 +86,7 @@ export function PainelDeMateriais({
     if (o.tipo === "ajuste") return "Ajuste manual";
     const controlador = o.controladorId ? config.controladores?.find((c) => c.id === o.controladorId) : undefined;
     if (o.tipo === "controlador") return `Controlador ${controlador?.nome ?? ""}`;
+    if (o.tipo === "cartao") return `Cartão de expansão · Controlador ${controlador?.nome ?? ""}`;
     const onde = controlador
       ? `Controlador ${controlador.nome}`
       : o.instanciaId

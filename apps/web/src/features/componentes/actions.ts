@@ -80,9 +80,10 @@ export async function excluirItem(id: string): Promise<EstadoDoFormulario> {
     db.modelo.count({ where: { itemId: id } }),
     db.regra.count({ where: { efeitos: { string_contains: id } } }),
     db.controlador.count({ where: { itemId: id } }),
-  ]);
+    db.cartaoDeExpansao.count({ where: { itemId: id } }),
+  ]).then(([m, r, c, k]) => [m, r, c + k] as const);
   if (modelos + regras + controladores > 0)
-    return { ok: false, mensagem: "O item é usado por modelos, regras ou como controlador. Inative-o em vez de excluir." };
+    return { ok: false, mensagem: "O item é usado por modelos, regras ou como controlador/cartão. Inative-o em vez de excluir." };
   await db.$transaction(async (tx) => {
     const antes = await tx.itemDeCatalogo.delete({ where: { id } });
     await auditar(tx, { usuarioId: u.id, acao: "excluir", entidade: "item", entidadeId: id, antes });

@@ -162,14 +162,13 @@ describe("controladores: recursos e compatibilidade", () => {
     expect(junto.controladores.porControlador[0]!.motivos).toEqual(["Faltam 2 DO (precisa 6, tem 4)."]);
   });
 
-  it("CLP com déficit pede expansão (Fase 08) em vez de recusar", () => {
+  it("CLP sem cartões compatíveis e com déficit não é compatível", () => {
     const clp = controlador({ id: "clp", tipo: "clp", recursos: { do: 2 } });
     const c = cenario06("clp");
     c.grupos = [];
     c.instancias[0]!.controladorId = "c1";
     const r = calcular(c, snap([clp], [recursoDO]));
-    expect(r.controladores.porControlador[0]!.compativel).toBe(true);
-    expect(r.pendencias.find((p) => p.codigo === "RECURSO_REQUER_EXPANSAO")?.mensagem).toMatch(/faltam 8 DO/);
+    expect(r.controladores.porControlador[0]!.motivos).toEqual(["Faltam 8 DO (precisa 10, tem 2)."]);
   });
 
   it("verifica modelos compatíveis e tensão do painel", () => {

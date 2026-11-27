@@ -60,9 +60,11 @@ export function Configurador({
   biblioteca,
   inicial,
   salvoEm,
+  podeAjustarReserva = false,
 }: {
   orcamentoId: string;
   editavel: boolean;
+  podeAjustarReserva?: boolean;
   biblioteca: BibliotecaDoConfigurador;
   inicial: ConfiguracaoDoProjeto;
   salvoEm: string | null;
@@ -348,6 +350,7 @@ export function Configurador({
           biblioteca={biblioteca}
           resultado={resultado.controladores}
           editavel={editavel}
+          podeAjustarReserva={podeAjustarReserva}
           nomeDaInstancia={(id) => nomeDaInstancia(id) ?? "item"}
         />
       )}

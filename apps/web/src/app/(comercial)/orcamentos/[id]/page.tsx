@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { exigirPermissaoNaPagina } from "@/server/auth/dal";
+import { pode } from "@/server/auth/permissions";
 import { obterOrcamento } from "@/features/orcamentos/queries";
 import { ROTULO_STATUS } from "@/features/orcamentos/schema";
 import { AcoesDoOrcamento } from "@/features/orcamentos/acoes";
@@ -13,7 +14,7 @@ import { Badge, CabecalhoDePagina } from "@/ui/card";
 export const metadata: Metadata = { title: "Configurador" };
 
 export default async function PaginaDoConfigurador({ params }: PageProps<"/orcamentos/[id]">) {
-  await exigirPermissaoNaPagina("orcamento:ver");
+  const usuario = await exigirPermissaoNaPagina("orcamento:ver");
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const [o, biblioteca] = await Promise.all([obterOrcamento(id), carregarBibliotecaDoConfigurador()]);
@@ -47,6 +48,7 @@ export default async function PaginaDoConfigurador({ params }: PageProps<"/orcam
       <Configurador
         orcamentoId={o.id}
         editavel={editavel}
+        podeAjustarReserva={pode(usuario.perfil, "configuracoes:gerenciar")}
         biblioteca={biblioteca}
         inicial={o.configuracao}
         salvoEm={o.revisao?.salvoEm.toISOString() ?? null}

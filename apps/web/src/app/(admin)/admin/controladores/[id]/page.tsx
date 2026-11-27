@@ -35,6 +35,7 @@ export default async function PaginaDoControlador({ params }: PageProps<"/admin/
         recursos: true,
         saidas: { orderBy: { ordem: "asc" }, include: { funcoes: { select: { id: true } } } },
         modelosCompativeis: { select: { id: true } },
+        cartoesCompativeis: { select: { id: true, ativo: true, item: { select: { codigo: true, descricao: true } } } },
         regras: { orderBy: [{ prioridade: "asc" }, { codigo: "asc" }] },
       },
     }),
@@ -96,6 +97,22 @@ export default async function PaginaDoControlador({ params }: PageProps<"/admin/
             equipamentos={equipamentos.filter((e) => e.modelos.length > 0)}
             marcados={c.modelosCompativeis.map((m) => m.id)}
           />
+        </Card>
+        <Card className="p-5">
+          <h2 className="mb-1 font-medium text-grafite-900">Cartões compatíveis</h2>
+          <p className="mb-3 text-sm text-gray-500">Marque a compatibilidade na página de cada cartão.</p>
+          {c.cartoesCompativeis.length === 0 ? (
+            <p className="text-sm text-gray-500">Nenhum cartão compatível.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {c.cartoesCompativeis.map((k) => (
+                <Link key={k.id} href={`/admin/cartoes/${k.id}`} className="rounded-md bg-gray-50 px-2 py-1 text-sm hover:bg-gray-100">
+                  {k.item.descricao} <span className="font-mono text-xs text-gray-500">{k.item.codigo}</span>
+                  {!k.ativo && " (inativo)"}
+                </Link>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
       <section className="mt-8 flex max-w-5xl flex-col gap-3">

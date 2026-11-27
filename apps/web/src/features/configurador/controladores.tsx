@@ -9,6 +9,7 @@ import {
   ligarInstanciaAoControlador,
   removerControlador,
   type ConfiguracaoDoProjeto,
+  type ReservaTecnica,
   type ResultadoDosControladores,
 } from "@zanatta/engine";
 import { Badge, Card } from "@/ui/card";
@@ -27,6 +28,7 @@ export function PainelDeControladores({
   resultado,
   editavel,
   nomeDaInstancia,
+  podeAjustarReserva = false,
 }: {
   config: ConfiguracaoDoProjeto;
   mudar: Mudar;
@@ -34,6 +36,7 @@ export function PainelDeControladores({
   resultado: ResultadoDosControladores;
   editavel: boolean;
   nomeDaInstancia: (id: string) => string;
+  podeAjustarReserva?: boolean;
 }) {
   const [nome, setNome] = useState("");
   const biblio = biblioteca.snapshot.controladores ?? {};
@@ -80,6 +83,12 @@ export function PainelDeControladores({
             </div>
           )}
         </div>
+        <ReservaDoProjeto
+          reserva={config.reserva ?? null}
+          padrao={biblioteca.snapshot.reservaPadrao ?? null}
+          editavel={editavel && podeAjustarReserva}
+          aoMudar={(reserva) => mudar((c) => ({ ...c, reserva }))}
+        />
         {Object.keys(biblio).length === 0 && (
           <p className="mt-3 text-sm text-amber-700">Nenhum controlador cadastrado na biblioteca ainda. Peça à equipe técnica.</p>
         )}
@@ -268,8 +277,8 @@ export function PainelDeControladores({
                   )}
                 </div>
                 <div>
-                  <p className="mb-2 text-sm font-medium text-grafite-900">Recursos (sem reserva)</p>
-                  {!a?.recursos?.length ? (
+                  <p className="mb-2 text-sm font-medium text-grafite-900">Recursos e expansão</p>
+                  {!a?.expansao?.necessidade.length ? (
                     <p className="text-sm text-gray-500">{escolhido ? "Nenhum sinal ligado a este controlador." : "Escolha o modelo do controlador."}</p>
                   ) : (
                     <table className="w-full text-sm" aria-label={`Recursos de ${cp.nome}`}>
@@ -277,25 +286,82 @@ export function PainelDeControladores({
                         <tr>
                           <th className="py-1 font-medium">Recurso</th>
                           <th className="py-1 text-right font-medium">Precisa</th>
+                          <th className="py-1 text-right font-medium">Reserva</th>
                           <th className="py-1 text-right font-medium">Integrado</th>
-                          <th className="py-1 text-right font-medium">Falta</th>
+                          <th className="py-1 text-right font-medium">Expansão</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {a.recursos.map((r) => (
+                        {a.expansao.necessidade.map((r) => (
                           <tr key={r.tipoRecursoId} className="border-t border-gray-100" data-recurso={r.codigo}>
                             <td className="py-1.5">{r.codigo}</td>
                             <td className="py-1.5 text-right tabular-nums" data-campo="necessario">
                               {r.necessario}
                             </td>
+                            <td className="py-1.5 text-right tabular-nums" data-campo="reserva">
+                              {r.reserva}
+                            </td>
                             <td className="py-1.5 text-right tabular-nums">{r.integrado}</td>
-                            <td className={`py-1.5 text-right tabular-nums ${r.deficit > 0 ? "font-medium text-red-700" : ""}`}>{r.deficit}</td>
+                            <td className={`py-1.5 text-right tabular-nums ${r.deficit > 0 ? "font-medium text-amber-700" : ""}`} data-campo="deficit">
+                              {r.deficit}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   )}
                 </div>
+                {escolhido && a?.expansao && a.expansao.alternativas.length > 0 && (
+                  <div role="group" aria-label={`Cartões de ${cp.nome}`}>
+                    <p className="mb-2 text-sm font-medium text-grafite-900">
+                      {a.expansao.alternativas.length === 1 ? "Cartões de expansão" : `Escolha os cartões (${a.expansao.alternativas.length} opções)`}
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {a.expansao.alternativas.map((alt, n) => {
+                        const ativa = a.expansao!.escolhida?.chave === alt.chave;
+                        return (
+                          <div
+                            key={alt.chave}
+                            data-alternativa={n + 1}
+                            data-escolhida={ativa ? "sim" : "nao"}
+                            className={`rounded-lg border p-3 text-sm ${ativa ? "border-marca-500 bg-marca-50/50" : "border-gray-200"}`}
+                          >
+                            <ul className="mb-2">
+                              {alt.cartoes.map((k) => (
+                                <li key={k.cartaoId}>
+                                  {k.quantidade}× {biblioteca.snapshot.cartoes?.[k.cartaoId]?.nome ?? "cartão"}
+                                </li>
+                              ))}
+                            </ul>
+                            <p className="text-xs text-gray-500">
+                              {alt.modulos} módulo(s) · {alt.excedente} ponto(s) sobrando
+                              {alt.consumo != null ? ` · ${alt.consumo} mA` : " · consumo incompleto"}
+                            </p>
+                            {ativa ? (
+                              <p className="mt-2 text-xs font-medium text-marca-700">{a.expansao!.automatica ? "Única opção, escolhida sozinha" : "Escolhida"}</p>
+                            ) : (
+                              editavel && (
+                                <Button
+                                  type="button"
+                                  tamanho="sm"
+                                  variante="secundario"
+                                  className="mt-2"
+                                  onClick={() =>
+                                    mudar((c) =>
+                                      atualizarControlador(c, cp.id, { cartoes: Object.fromEntries(alt.cartoes.map((k) => [k.cartaoId, k.quantidade])) }),
+                                    )
+                                  }
+                                >
+                                  Escolher opção {n + 1}
+                                </Button>
+                              )
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </Card>
@@ -309,6 +375,65 @@ export function PainelDeControladores({
             um controlador.
           </p>
         </Card>
+      )}
+    </div>
+  );
+}
+
+const CODIGOS = ["DI", "DO", "AI", "AO"] as const;
+
+/** Reserva técnica do projeto: padrão global ou ajuste do administrador técnico (§30). */
+function ReservaDoProjeto({
+  reserva,
+  padrao,
+  editavel,
+  aoMudar,
+}: {
+  reserva: ReservaTecnica | null;
+  padrao: ReservaTecnica | null;
+  editavel: boolean;
+  aoMudar: (r: ReservaTecnica | null) => void;
+}) {
+  const vigente = reserva ?? padrao ?? { modo: "nenhuma" as const, valores: {} };
+  const descricao =
+    vigente.modo === "nenhuma"
+      ? "sem reserva"
+      : CODIGOS.filter((c) => (vigente.valores[c] ?? 0) > 0)
+          .map((c) => `${c} ${vigente.valores[c]}${vigente.modo === "percentual" ? "%" : ""}`)
+          .join(", ") || "sem reserva";
+  return (
+    <div className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-sm" role="group" aria-label="Reserva técnica do projeto">
+      <p className="text-grafite-800">
+        Reserva técnica: <span className="font-medium">{descricao}</span>
+        <span className="text-xs text-gray-500"> · {reserva ? "ajustada neste projeto" : "padrão das configurações"}</span>
+      </p>
+      {editavel && (
+        <div className="mt-2 flex flex-wrap items-end gap-2">
+          <Campo rotulo="Modo da reserva do projeto">
+            <Select
+              value={reserva ? reserva.modo : "padrao"}
+              onChange={(e) => aoMudar(e.target.value === "padrao" ? null : { modo: e.target.value as ReservaTecnica["modo"], valores: reserva?.valores ?? padrao?.valores ?? {} })}
+            >
+              <option value="padrao">Usar o padrão</option>
+              <option value="nenhuma">Sem reserva</option>
+              <option value="percentual">Percentual (%)</option>
+              <option value="fixa">Quantidade fixa</option>
+            </Select>
+          </Campo>
+          {reserva &&
+            reserva.modo !== "nenhuma" &&
+            CODIGOS.map((c) => (
+              <Campo key={c} rotulo={`Reserva do projeto ${c}`}>
+                <Input
+                  className="w-20"
+                  type="number"
+                  min={0}
+                  value={reserva.valores[c] ?? 0}
+                  onChange={(e) => aoMudar({ ...reserva, valores: { ...reserva.valores, [c]: Math.max(0, Number(e.target.value) || 0) } })}
+                />
+              </Campo>
+            ))}
+        </div>
       )}
     </div>
   );

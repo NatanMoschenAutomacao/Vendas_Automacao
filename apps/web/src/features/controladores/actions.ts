@@ -45,6 +45,9 @@ export async function salvarControlador(id: string, _: EstadoDoFormulario, form:
     tensoes: String(form.get("tensoes") ?? ""),
     protocolos: String(form.get("protocolos") ?? ""),
     observacoes: String(form.get("observacoes") ?? ""),
+    barramento: String(form.get("barramento") ?? ""),
+    maxModulos: String(form.get("maxModulos") ?? ""),
+    consumoMaxBarramento: String(form.get("consumoMaxBarramento") ?? ""),
     isDemo: form.get("isDemo") === "on",
   });
   if (!d.success) {

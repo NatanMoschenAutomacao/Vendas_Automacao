@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/server/db";
+import { pode } from "@/server/auth/permissions";
 import { exigirPermissao } from "@/server/auth/dal";
 import { auditar } from "@/server/audit";
 import type { EstadoDoFormulario } from "@/ui/form-status";
@@ -116,8 +117,12 @@ export async function salvarRascunho(id: string, json: string): Promise<Resultad
       (((rev?.configuracao as { ajustes?: { id: string; autor?: string | null; data?: string | null }[] } | null)?.ajustes) ?? []).map((a) => [a.id, a]),
     );
     const agora = new Date().toISOString();
+    // Reserva técnica por projeto: só quem gerencia configurações altera (§30).
+    const reservaAnterior = (rev?.configuracao as { reserva?: unknown } | null)?.reserva ?? null;
+    const reserva = pode(u.perfil, "configuracoes:gerenciar") ? (config.data.reserva ?? null) : (reservaAnterior as typeof config.data.reserva);
     const dados = {
       ...config.data,
+      reserva,
       ajustes: config.data.ajustes?.map((a) => {
         const antes = anteriores.get(a.id);
         return { ...a, autor: antes ? (antes.autor ?? null) : u.nome, data: antes ? (antes.data ?? null) : agora };
