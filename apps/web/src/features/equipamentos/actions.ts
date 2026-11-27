@@ -160,6 +160,10 @@ export async function duplicarEquipamento(id: string) {
         imagemId: original.imagemId,
         ativo: original.ativo,
         isDemo: original.isDemo,
+        acionamento: original.acionamento,
+        acionamentoPorGrupo: original.acionamentoPorGrupo,
+        protecao: original.protecao,
+        protecaoPorGrupo: original.protecaoPorGrupo,
         ordem: (ultima._max.ordem ?? -1) + 1,
         definicoes: {
           create: original.definicoes.map(({ chave, rotulo, tipoDado, unidade, opcoes, obrigatorio, ordem }) => ({
@@ -183,6 +187,10 @@ export async function duplicarEquipamento(id: string) {
             ordem: m.ordem,
             ativo: m.ativo,
             isDemo: m.isDemo,
+            acionamento: m.acionamento,
+            acionamentoPorGrupo: m.acionamentoPorGrupo,
+            protecao: m.protecao,
+            protecaoPorGrupo: m.protecaoPorGrupo,
           })),
         },
       },
@@ -459,6 +467,10 @@ export async function duplicarModelo(id: string) {
         imagemId: o.imagemId,
         ativo: o.ativo,
         isDemo: o.isDemo,
+        acionamento: o.acionamento,
+        acionamentoPorGrupo: o.acionamentoPorGrupo,
+        protecao: o.protecao,
+        protecaoPorGrupo: o.protecaoPorGrupo,
         ordem: (ultima._max.ordem ?? -1) + 1,
       },
     });
@@ -563,4 +575,50 @@ export async function removerImagem(alvo: Alvo, id: string) {
   });
   if (anterior) await limparImagemOrfa(anterior);
   revalidar(equipamentoId);
+}
+
+/* ─────────────────── Acionamento e proteção ─────────────────── */
+
+const tipoDeDerivacao = z.enum(["NENHUM", "INDIVIDUAL", "COLETIVO"]);
+
+function lerDerivacao(form: FormData, campo: "acionamento" | "protecao", herdavel: boolean) {
+  const bruto = texto(form, campo);
+  if (herdavel && bruto === "") return { ok: true as const, tipo: null, porGrupo: null };
+  const tipo = tipoDeDerivacao.safeParse(bruto);
+  if (!tipo.success) return { ok: false as const, erro: "Escolha uma opção." };
+  if (tipo.data !== "COLETIVO") return { ok: true as const, tipo: tipo.data, porGrupo: null };
+  const n = Number(texto(form, `${campo}PorGrupo`));
+  if (!Number.isInteger(n) || n < 1 || n > 10_000) return { ok: false as const, erro: "Informe um número inteiro maior que zero." };
+  return { ok: true as const, tipo: tipo.data, porGrupo: n };
+}
+
+export async function salvarDerivacao(alvo: Alvo, id: string, _: EstadoDoFormulario, form: FormData): Promise<EstadoDoFormulario> {
+  const u = await exigirPermissao(ACAO);
+  alvoSchema.parse(alvo);
+  idSchema.parse(id);
+  const herdavel = alvo === "modelo";
+  const a = lerDerivacao(form, "acionamento", herdavel);
+  const p = lerDerivacao(form, "protecao", herdavel);
+  const erros: Record<string, string> = {};
+  if (!a.ok) erros.acionamentoPorGrupo = a.erro;
+  if (!p.ok) erros.protecaoPorGrupo = p.erro;
+  if (!a.ok || !p.ok) return { erros, mensagem: "Revise os campos destacados." };
+  const dados = { acionamento: a.tipo, acionamentoPorGrupo: a.porGrupo, protecao: p.tipo, protecaoPorGrupo: p.porGrupo };
+  const equipamentoId = await equipamentoDoAlvo(alvo, id);
+  await db.$transaction(async (tx) => {
+    if (alvo === "equipamento") {
+      const antes = await tx.equipamento.findUniqueOrThrow({ where: { id } });
+      await tx.equipamento.update({
+        where: { id },
+        data: { ...dados, acionamento: dados.acionamento ?? "NENHUM", protecao: dados.protecao ?? "NENHUM" },
+      });
+      await auditar(tx, { usuarioId: u.id, acao: "editar-derivacao", entidade: alvo, entidadeId: id, antes, depois: dados });
+    } else {
+      const antes = await tx.modelo.findUniqueOrThrow({ where: { id } });
+      await tx.modelo.update({ where: { id }, data: dados });
+      await auditar(tx, { usuarioId: u.id, acao: "editar-derivacao", entidade: alvo, entidadeId: id, antes, depois: dados });
+    }
+  });
+  revalidar(equipamentoId);
+  return { ok: true, mensagem: "Regras salvas." };
 }

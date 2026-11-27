@@ -10,6 +10,7 @@
  */
 import type { Pergunta, PerguntaDeModelo, ValorDeResposta } from "./perguntas/tipos";
 import type { ResultadoDasPerguntas } from "./perguntas/aplicabilidade";
+import type { ResultadoDaEstrutura } from "./estrutura/estrutura";
 
 export type Id = string;
 
@@ -17,6 +18,45 @@ export type Id = string;
 export interface ConfiguracaoDoProjeto {
   schemaVersion: 1;
   instancias: InstanciaDeEquipamento[];
+  /** Estrutura do projeto (Fase 05). Opcionais para rascunhos antigos. */
+  ambientes?: Ambiente[];
+  setores?: Setor[];
+  paineis?: Painel[];
+  grupos?: GrupoDeControle[];
+}
+
+export interface Ambiente {
+  id: Id;
+  nome: string;
+}
+
+export interface Setor {
+  id: Id;
+  ambienteId: Id;
+  nome: string;
+}
+
+export interface Painel {
+  id: Id;
+  identificacao: string;
+  tipoId: Id | null;
+  /** Tensão de comando/alimentação informada pelo vendedor (V). */
+  tensao: number | null;
+  /** Ambientes atendidos pelo painel. */
+  ambientes: Id[];
+}
+
+/** Grupo de controle: entidade própria, com membros de uma ou mais instâncias (§18). */
+export interface GrupoDeControle {
+  id: Id;
+  nome: string;
+  funcaoId: Id | null;
+  membros: MembroDeGrupo[];
+}
+
+export interface MembroDeGrupo {
+  instanciaId: Id;
+  quantidade: number;
 }
 
 export interface InstanciaDeEquipamento {
@@ -30,6 +70,17 @@ export interface InstanciaDeEquipamento {
   respostas?: Record<string, ValorDeResposta | null>;
   /** Kit de onde a instância veio, se houver (só informativo). */
   kitId?: Id | null;
+  /** Ambientes atendidos. Mais de um = compartilhado, contado uma vez só. */
+  ambientes?: Id[];
+  setorId?: Id | null;
+  painelId?: Id | null;
+}
+
+/** Como acionamentos e proteções são derivados de um modelo (§18). */
+export interface Derivacao {
+  tipo: "nenhum" | "individual" | "coletivo";
+  /** No coletivo: quantas unidades cada acionamento/proteção atende. */
+  porGrupo?: number | null;
 }
 
 export interface ModeloNoSnapshot {
@@ -38,6 +89,9 @@ export interface ModeloNoSnapshot {
   ativo: boolean;
   atributos: Record<string, unknown>;
   perguntas: PerguntaDeModelo[];
+  /** Substitui a regra do equipamento quando presente. */
+  acionamento?: Derivacao | null;
+  protecao?: Derivacao | null;
 }
 
 export interface EquipamentoNoSnapshot {
@@ -48,12 +102,29 @@ export interface EquipamentoNoSnapshot {
   ativo: boolean;
   perguntas: Pergunta[];
   modelos: ModeloNoSnapshot[];
+  acionamento?: Derivacao | null;
+  protecao?: Derivacao | null;
+}
+
+export interface TipoDePainelNoSnapshot {
+  id: Id;
+  nome: string;
+  ativo: boolean;
+}
+
+export interface FuncaoDeControleNoSnapshot {
+  id: Id;
+  codigo: string;
+  nome: string;
+  ativo: boolean;
 }
 
 /** Recorte imutável da biblioteca técnica usado num cálculo. */
 export interface SnapshotDaBiblioteca {
   versao: string;
   equipamentos?: Record<Id, EquipamentoNoSnapshot>;
+  tiposDePainel?: Record<Id, TipoDePainelNoSnapshot>;
+  funcoes?: Record<Id, FuncaoDeControleNoSnapshot>;
 }
 
 export type Gravidade = "informativa" | "advertencia" | "impeditiva";
@@ -70,6 +141,8 @@ export interface ResultadoDoCalculo {
   pendencias: Pendencia[];
   /** Perguntas avaliadas por instância (id da instância). */
   perguntas: Record<Id, ResultadoDasPerguntas>;
+  /** Contagens da estrutura (Fase 05). */
+  estrutura: ResultadoDaEstrutura;
   /** Estágios executados, na ordem. Útil para depuração e testes. */
   estagios: NomeDoEstagio[];
 }

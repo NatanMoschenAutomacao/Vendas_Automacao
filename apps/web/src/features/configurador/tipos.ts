@@ -71,5 +71,8 @@ export interface BibliotecaDoConfigurador {
   equipamentos: EquipamentoDoConfigurador[];
   kits: KitDoConfigurador[];
   imagens: ImagemInterativaDoConfigurador[];
+  /** Ordenados como na administração (inclui inativos, para rascunhos antigos). */
+  tiposDePainel: { id: string; nome: string; ativo: boolean }[];
+  funcoes: { id: string; codigo: string; nome: string; ativo: boolean }[];
   snapshot: SnapshotDaBiblioteca;
 }

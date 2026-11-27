@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/server/db";
+import { FormDerivacao } from "@/features/equipamentos/derivacao";
 import { notFound } from "next/navigation";
 import { AlertTriangle, ArrowLeft, ImageOff } from "lucide-react";
 import { formatarAtributo, type TipoDeDado } from "@zanatta/engine";
@@ -14,6 +15,7 @@ import {
   atualizarEquipamento,
   criarModelo,
   enviarImagem,
+  salvarDerivacao,
   removerImagem,
 } from "@/features/equipamentos/actions";
 import {
@@ -43,6 +45,7 @@ const ABAS = [
   { id: "perguntas", titulo: "Perguntas" },
   { id: "imagem", titulo: "Imagem" },
   { id: "imagens-interativas", titulo: "Imagens interativas" },
+  { id: "estrutura", titulo: "Acionamento e proteção" },
 ] as const;
 
 /** Abas que dependem das próximas fases aparecem desabilitadas. */
@@ -107,6 +110,14 @@ export default async function PaginaEquipamento({ params, searchParams }: PagePr
       {aba === "caracteristicas" && <AbaCaracteristicas e={e} />}
       {aba === "modelos" && <AbaModelos e={e} />}
       {aba === "perguntas" && <AbaPerguntas e={e} />}
+      {aba === "estrutura" && (
+        <Card className="max-w-3xl p-6">
+          <p className="mb-4 text-sm text-gray-500">
+            Define quantos acionamentos e proteções cada unidade gera. Um modelo pode substituir esta regra.
+          </p>
+          <FormDerivacao acao={salvarDerivacao.bind(null, "equipamento", e.id)} valores={e} />
+        </Card>
+      )}
       {aba === "imagens-interativas" && <AbaImagensInterativas equipamentoId={e.id} />}
       {aba === "imagem" && (
         <Card className="max-w-4xl p-6">

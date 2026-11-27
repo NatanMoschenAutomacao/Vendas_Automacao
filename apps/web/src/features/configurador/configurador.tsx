@@ -35,6 +35,7 @@ import { BotaoIcone } from "@/ui/acoes-de-linha";
 import { CampoDeResposta } from "@/features/perguntas/campo-de-resposta";
 import { salvarRascunho } from "@/features/orcamentos/actions";
 import { ImagemComHotspots } from "./imagem-com-hotspots";
+import { PainelDeEstrutura, PainelDeGrupos, ResumoDaEstrutura } from "./estrutura";
 import type {
   BibliotecaDoConfigurador,
   CategoriaDoConfigurador,
@@ -69,6 +70,7 @@ export function Configurador({
   const [selecionada, setSelecionada] = useState<string | null>(inicial.instancias[0]?.id ?? null);
   const [categoriaAtual, setCategoriaAtual] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [aba, setAba] = useState<"itens" | "estrutura" | "grupos">("itens");
   const [salvamento, setSalvamento] = useState<EstadoDoSalvamento>({ tipo: "salvo", em: salvoEm ? new Date(salvoEm) : null });
 
   const resultado = useMemo(() => calcular(config, snapshot), [config, snapshot]);
@@ -214,12 +216,67 @@ export function Configurador({
     const i = config.instancias.find((x) => x.id === id);
     return i ? (equipamentos.get(i.equipamentoId)?.nome ?? "Equipamento removido") : null;
   };
+  /** Nome e aba de onde corrigir uma pendência. */
+  const ondeCorrigir = (id?: string): { nome: string; aba: typeof aba } | null => {
+    if (!id) return null;
+    const inst = nomeDaInstancia(id);
+    if (inst) return { nome: inst, aba: "itens" };
+    const grupo = config.grupos?.find((g) => g.id === id);
+    if (grupo) return { nome: `Grupo ${grupo.nome}`, aba: "grupos" };
+    const painel = config.paineis?.find((p) => p.id === id);
+    if (painel) return { nome: `Painel ${painel.identificacao}`, aba: "estrutura" };
+    const setor = config.setores?.find((x) => x.id === id);
+    if (setor) return { nome: `Setor ${setor.nome}`, aba: "estrutura" };
+    return null;
+  };
   const pendenciasPorInstancia = new Map<string, Pendencia[]>();
   for (const p of resultado.pendencias) {
     if (!p.referencia) continue;
     pendenciasPorInstancia.set(p.referencia, [...(pendenciasPorInstancia.get(p.referencia) ?? []), p]);
   }
   const impeditivas = resultado.pendencias.filter((p) => p.gravidade === "impeditiva").length;
+
+  const cartaoDePendencias = (
+          <Card className="overflow-hidden" role="region" aria-label="Pendências">
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+              <h2 className="font-medium text-grafite-900">Pendências</h2>
+              {impeditivas > 0 ? (
+                <Badge tom="aviso">{impeditivas} impeditiva(s)</Badge>
+              ) : (
+                <Badge tom="marca">Nenhuma impeditiva</Badge>
+              )}
+            </div>
+            {resultado.pendencias.length === 0 ? (
+              <p className="px-4 py-4 text-sm text-gray-500">Nenhuma pendência.</p>
+            ) : (
+              <ul className="flex flex-col">
+                {resultado.pendencias.map((p, n) => (
+                  <li key={n} className="border-b border-gray-100 last:border-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const onde = ondeCorrigir(p.referencia);
+                        if (!onde) return;
+                        setAba(onde.aba);
+                        if (onde.aba === "itens") setSelecionada(p.referencia!);
+                      }}
+                      className="flex w-full items-start gap-2 px-4 py-2 text-left text-sm hover:bg-gray-50"
+                    >
+                      <AlertTriangle className={cn("mt-0.5 size-4 shrink-0", p.gravidade === "impeditiva" ? "text-red-600" : "text-amber-600")} />
+                      <span className="min-w-0 flex-1">
+                        <span className="text-grafite-800">{p.mensagem}</span>
+                        <span className="block text-xs text-gray-500">
+                          {ROTULO_GRAVIDADE[p.gravidade]}
+                          {ondeCorrigir(p.referencia) && ` · ${ondeCorrigir(p.referencia)!.nome}`}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -232,9 +289,56 @@ export function Configurador({
         )}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,5fr)_minmax(0,4fr)]">
+      <ResumoDaEstrutura estrutura={resultado.estrutura} />
+
+      <nav className="flex flex-wrap gap-1 border-b border-gray-200" aria-label="Etapas do configurador">
+        {(
+          [
+            ["itens", "Equipamentos"],
+            ["estrutura", "Ambientes e painéis"],
+            ["grupos", "Grupos de controle"],
+          ] as const
+        ).map(([id, titulo]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setAba(id)}
+            aria-current={aba === id ? "page" : undefined}
+            className={cn(
+              "-mb-px border-b-2 px-3 py-2 text-sm font-medium",
+              aba === id ? "border-marca-600 text-marca-700" : "border-transparent text-gray-500 hover:text-grafite-800",
+            )}
+          >
+            {titulo}
+          </button>
+        ))}
+      </nav>
+
+      {aba === "estrutura" && (
+        <PainelDeEstrutura
+          config={config}
+          mudar={mudar}
+          biblioteca={biblioteca}
+          estrutura={resultado.estrutura}
+          editavel={editavel}
+          nomeDaInstancia={(id) => nomeDaInstancia(id) ?? "item"}
+        />
+      )}
+      {aba === "grupos" && (
+        <PainelDeGrupos
+          config={config}
+          mudar={mudar}
+          biblioteca={biblioteca}
+          estrutura={resultado.estrutura}
+          editavel={editavel}
+          nomeDaInstancia={(id) => nomeDaInstancia(id) ?? "item"}
+        />
+      )}
+      {aba !== "itens" && cartaoDePendencias}
+
+      <div className={cn("grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,5fr)_minmax(0,4fr)]", aba !== "itens" && "xl:grid-cols-1 2xl:grid-cols-1")}>
         {/* ───────── Catálogo ───────── */}
-        <section aria-label="Catálogo" className="flex min-w-0 flex-col gap-4">
+        <section aria-label="Catálogo" className={cn("flex min-w-0 flex-col gap-4", aba !== "itens" && "hidden")}>
           <nav aria-label="Trilha do catálogo" className="flex flex-wrap items-center gap-1 text-sm">
             <button type="button" onClick={() => setCategoriaAtual(null)} className={cn("rounded px-1.5 py-0.5 hover:bg-gray-100", !categoriaAtual && "font-medium text-grafite-900")}>
               Catálogo
@@ -311,7 +415,7 @@ export function Configurador({
         </section>
 
         {/* ───────── Projeto ───────── */}
-        <section aria-label="Projeto" className="flex min-w-0 flex-col gap-4">
+        <section aria-label="Projeto" className={cn("flex min-w-0 flex-col gap-4", aba !== "itens" && "hidden")}>
           <Card className="overflow-hidden">
             <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
               <h2 className="font-medium text-grafite-900">Itens do projeto</h2>
@@ -373,6 +477,7 @@ export function Configurador({
               equipamento={equipamentos.get(instancia.equipamentoId)}
               biblioteca={biblioteca}
               resultado={resultado.perguntas[instancia.id]}
+              config={config}
               editavel={editavel}
               mudar={mudar}
               aoRemover={() => {
@@ -384,40 +489,7 @@ export function Configurador({
             />
           )}
 
-          <Card className="overflow-hidden" role="region" aria-label="Pendências">
-            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-              <h2 className="font-medium text-grafite-900">Pendências</h2>
-              {impeditivas > 0 ? (
-                <Badge tom="aviso">{impeditivas} impeditiva(s)</Badge>
-              ) : (
-                <Badge tom="marca">Nenhuma impeditiva</Badge>
-              )}
-            </div>
-            {resultado.pendencias.length === 0 ? (
-              <p className="px-4 py-4 text-sm text-gray-500">Nenhuma pendência.</p>
-            ) : (
-              <ul className="flex flex-col">
-                {resultado.pendencias.map((p, n) => (
-                  <li key={n} className="border-b border-gray-100 last:border-0">
-                    <button
-                      type="button"
-                      onClick={() => p.referencia && setSelecionada(p.referencia)}
-                      className="flex w-full items-start gap-2 px-4 py-2 text-left text-sm hover:bg-gray-50"
-                    >
-                      <AlertTriangle className={cn("mt-0.5 size-4 shrink-0", p.gravidade === "impeditiva" ? "text-red-600" : "text-amber-600")} />
-                      <span className="min-w-0 flex-1">
-                        <span className="text-grafite-800">{p.mensagem}</span>
-                        <span className="block text-xs text-gray-500">
-                          {ROTULO_GRAVIDADE[p.gravidade]}
-                          {nomeDaInstancia(p.referencia) && ` · ${nomeDaInstancia(p.referencia)}`}
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
+          {cartaoDePendencias}
         </section>
       </div>
     </div>
@@ -525,6 +597,7 @@ function PainelDaInstancia({
   equipamento: e,
   biblioteca,
   resultado,
+  config,
   editavel,
   mudar,
   aoRemover,
@@ -535,6 +608,7 @@ function PainelDaInstancia({
   equipamento: EquipamentoDoConfigurador | undefined;
   biblioteca: BibliotecaDoConfigurador;
   resultado: ReturnType<typeof calcular>["perguntas"][string] | undefined;
+  config: ConfiguracaoDoProjeto;
   editavel: boolean;
   mudar: (f: (c: ConfiguracaoDoProjeto) => ConfiguracaoDoProjeto) => void;
   aoRemover: () => void;
@@ -606,6 +680,65 @@ function PainelDaInstancia({
           </Select>
         </label>
       </fieldset>
+
+      {((config.ambientes?.length ?? 0) > 0 || (config.paineis?.length ?? 0) > 0) && (
+        <fieldset disabled={!editavel} className="flex flex-col gap-3 rounded-lg bg-gray-50/70 p-3" aria-label="Onde fica">
+          {(config.ambientes?.length ?? 0) > 0 && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              <span className="font-medium text-grafite-700">Ambientes atendidos:</span>
+              {config.ambientes!.map((a) => (
+                <label key={a.id} className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-marca-600"
+                    checked={i.ambientes?.includes(a.id) ?? false}
+                    onChange={(ev) => {
+                      const atuais = i.ambientes ?? [];
+                      const novos = ev.target.checked ? [...atuais, a.id] : atuais.filter((x) => x !== a.id);
+                      const setor = config.setores?.find((x) => x.id === i.setorId);
+                      mudar((c) =>
+                        atualizarInstancia(c, i.id, { ambientes: novos, setorId: setor && !novos.includes(setor.ambienteId) ? null : (i.setorId ?? null) }),
+                      );
+                    }}
+                  />
+                  {a.nome}
+                </label>
+              ))}
+              {(i.ambientes?.length ?? 0) > 1 && <Badge tom="marca">Compartilhado</Badge>}
+            </div>
+          )}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(config.setores?.length ?? 0) > 0 && (
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-grafite-700">Setor</span>
+                <Select value={i.setorId ?? ""} onChange={(ev) => mudar((c) => atualizarInstancia(c, i.id, { setorId: ev.target.value || null }))}>
+                  <option value="">Sem setor</option>
+                  {config.setores!
+                    .filter((x) => i.ambientes?.includes(x.ambienteId) || x.id === i.setorId)
+                    .map((x) => (
+                      <option key={x.id} value={x.id}>
+                        {config.ambientes?.find((a) => a.id === x.ambienteId)?.nome} › {x.nome}
+                      </option>
+                    ))}
+                </Select>
+              </label>
+            )}
+            {(config.paineis?.length ?? 0) > 0 && (
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-grafite-700">Painel</span>
+                <Select value={i.painelId ?? ""} onChange={(ev) => mudar((c) => atualizarInstancia(c, i.id, { painelId: ev.target.value || null }))}>
+                  <option value="">Escolha o painel…</option>
+                  {config.paineis!.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.identificacao}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            )}
+          </div>
+        </fieldset>
+      )}
 
       {imagens.map((img) => (
         <ImagemComHotspots
