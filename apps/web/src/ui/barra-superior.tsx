@@ -8,7 +8,7 @@ import type { UsuarioAtual } from "@/server/auth/dal";
 export function BarraSuperior({ usuario }: { usuario: UsuarioAtual }) {
   return (
     <header className="sticky top-0 z-10 border-b border-gray-100 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-4 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-[110rem] items-center gap-6 px-4 sm:px-6">
         <Link href="/">
           <Logo />
         </Link>

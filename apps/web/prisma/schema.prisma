@@ -1,5 +1,8 @@
-// Schema da Fase 01: usuários, categorias, configurações e auditoria.
-// As entidades da biblioteca técnica entram nas fases seguintes, por migrations.
+// Fase 01: usuários, categorias, configurações e auditoria.
+// Fase 02: biblioteca de equipamentos (equipamentos, características, modelos e imagens).
+// Fase 03: perguntas dinâmicas com herança equipamento → modelo e condições.
+// Fase 04: orçamentos (revisões com a configuração em JSONB), kits e imagens interativas.
+// As demais entidades entram nas fases seguintes, por migrations.
 
 generator client {
   provider = "prisma-client"
@@ -29,6 +32,8 @@ model Usuario {
   atualizadoEm        DateTime  @updatedAt
 
   auditorias RegistroDeAuditoria[]
+  orcamentos Orcamento[]
+  emissoes   Emissao[]
 
   @@map("usuarios")
 }
@@ -45,6 +50,10 @@ model Categoria {
   isDemo       Boolean     @default(false)
   criadoEm     DateTime    @default(now())
   atualizadoEm DateTime    @updatedAt
+
+  equipamentos        Equipamento[]
+  kits                Kit[]
+  imagensInterativas  ImagemInterativa[]
 
   @@index([paiId, ordem])
   @@map("categorias")
@@ -71,4 +80,653 @@ model RegistroDeAuditoria {
 
   @@index([entidade, entidadeId])
   @@map("auditoria")
+}
+
+enum TipoDeEquipamento {
+  EQUIPAMENTO
+  SENSOR
+  ACESSORIO
+}
+
+enum TipoDeDado {
+  TEXTO
+  NUMERO
+  BOOLEANO
+  LISTA
+  MULTIPLA
+}
+
+model Equipamento {
+  id               String            @id @default(uuid()) @db.Uuid
+  codigo           String            @unique
+  nome             String
+  descricao        String?
+  tipo             TipoDeEquipamento @default(EQUIPAMENTO)
+  categoriaId      String            @db.Uuid
+  categoria        Categoria         @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+  imagemId         String?           @db.Uuid
+  imagem           Imagem?           @relation(fields: [imagemId], references: [id], onDelete: SetNull)
+  ordem            Int               @default(0)
+  ativo            Boolean           @default(true)
+  isDemo           Boolean           @default(false)
+  /// Como acionamentos e proteções são derivados das unidades (§18).
+  acionamento         TipoDeDerivacao @default(NENHUM)
+  acionamentoPorGrupo Int?
+  protecao            TipoDeDerivacao @default(NENHUM)
+  protecaoPorGrupo    Int?
+  criadoEm         DateTime          @default(now())
+  atualizadoEm     DateTime          @updatedAt
+
+  definicoes         DefinicaoDeAtributo[]
+  modelos            Modelo[]
+  perguntas          Pergunta[]
+  itensDeKit         ItemDeKit[]
+  imagensInterativas ImagemInterativa[]
+  regras             Regra[]
+  modelosDeTexto ModeloDeTexto[]
+
+  @@index([categoriaId, ordem])
+  @@map("equipamentos")
+}
+
+/// Característica técnica que os modelos de um equipamento devem preencher.
+model DefinicaoDeAtributo {
+  id            String      @id @default(uuid()) @db.Uuid
+  equipamentoId String      @db.Uuid
+  equipamento   Equipamento @relation(fields: [equipamentoId], references: [id], onDelete: Cascade)
+  chave         String
+  rotulo        String
+  tipoDado      TipoDeDado
+  unidade       String?
+  opcoes        String[]
+  obrigatorio   Boolean     @default(false)
+  ordem         Int         @default(0)
+
+  @@unique([equipamentoId, chave])
+  @@index([equipamentoId, ordem])
+  @@map("definicoes_de_atributo")
+}
+
+model Modelo {
+  id            String      @id @default(uuid()) @db.Uuid
+  equipamentoId String      @db.Uuid
+  equipamento   Equipamento @relation(fields: [equipamentoId], references: [id], onDelete: Cascade)
+  codigo        String
+  nome          String
+  fabricante    String?
+  descricao     String?
+  /// Valores das características, por chave da definição.
+  atributos     Json        @default("{}")
+  imagemId      String?     @db.Uuid
+  imagem        Imagem?     @relation(fields: [imagemId], references: [id], onDelete: SetNull)
+  ordem         Int         @default(0)
+  ativo         Boolean     @default(true)
+  isDemo        Boolean     @default(false)
+  /// Substitui a regra do equipamento quando preenchido (null = herda).
+  acionamento         TipoDeDerivacao?
+  acionamentoPorGrupo Int?
+  protecao            TipoDeDerivacao?
+  protecaoPorGrupo    Int?
+  /// Item do catálogo fornecido quando o equipamento é da Zanatta.
+  itemId        String?     @db.Uuid
+  item          ItemDeCatalogo? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  criadoEm      DateTime    @default(now())
+  atualizadoEm  DateTime    @updatedAt
+
+  perguntas  Pergunta[]
+  itensDeKit ItemDeKit[]
+  regras     Regra[]
+  modelosDeTexto ModeloDeTexto[]
+  /// Controladores que declaram compatibilidade com este modelo (Fase 07).
+  controladores Controlador[] @relation("ModelosCompativeis")
+
+  @@unique([equipamentoId, codigo])
+  @@index([equipamentoId, ordem])
+  @@map("modelos")
+}
+
+model Imagem {
+  id                String   @id @default(uuid()) @db.Uuid
+  /// Caminho no armazenamento (local ou Supabase Storage).
+  chave             String   @unique
+  nomeArquivo       String
+  tipoMime          String
+  tamanho           Int
+  largura           Int?
+  altura            Int?
+  textoAlternativo  String?
+  criadoEm          DateTime @default(now())
+
+  equipamentos       Equipamento[]
+  modelos            Modelo[]
+  kits               Kit[]
+  imagensInterativas ImagemInterativa[]
+
+  @@map("imagens")
+}
+
+enum ModoDeHeranca {
+  NOVA
+  SUBSTITUIR
+  OCULTAR
+}
+
+/// Pergunta dinâmica. Dono: equipamento OU modelo (painel, ambiente e projeto nas fases seguintes).
+model Pergunta {
+  id            String        @id @default(uuid()) @db.Uuid
+  equipamentoId String?       @db.Uuid
+  equipamento   Equipamento?  @relation(fields: [equipamentoId], references: [id], onDelete: Cascade)
+  modeloId      String?       @db.Uuid
+  modelo        Modelo?       @relation(fields: [modeloId], references: [id], onDelete: Cascade)
+  chave         String
+  modo          ModoDeHeranca @default(NOVA)
+  texto         String
+  ajuda         String?
+  /// Tipo do motor (SELECAO_UNICA, INTEIRO, CALCULADO...).
+  tipo          String
+  unidade       String?
+  obrigatoria   Boolean       @default(false)
+  minimo        Float?
+  maximo        Float?
+  passo         Float?
+  padrao        Json?
+  /// Árvore de condição (E/OU/NÃO). Nulo = sempre visível.
+  condicao      Json?
+  /// [{ valor, rotulo, imagemUrl?, condicao? }]
+  opcoes        Json          @default("[]")
+  atributo      String?
+  formula       String?
+  ordem         Int           @default(0)
+  ativo         Boolean       @default(true)
+  isDemo        Boolean       @default(false)
+  criadoEm      DateTime      @default(now())
+  atualizadoEm  DateTime      @updatedAt
+
+  @@unique([equipamentoId, chave])
+  @@unique([modeloId, chave])
+  @@index([equipamentoId, ordem])
+  @@index([modeloId, ordem])
+  @@map("perguntas")
+}
+
+enum StatusDoOrcamento {
+  RASCUNHO
+  AGUARDANDO_VALIDACAO
+  VALIDADO
+  EMITIDO
+}
+
+model Orcamento {
+  id           String            @id @default(uuid()) @db.Uuid
+  /// Número da proposta, ex.: 2026-0001.
+  numero       String            @unique
+  cliente      String
+  empresa      String?
+  projeto      String
+  cidade       String?
+  uf           String?
+  observacoes  String?
+  status       StatusDoOrcamento @default(RASCUNHO)
+  vendedorId   String            @db.Uuid
+  vendedor     Usuario           @relation(fields: [vendedorId], references: [id], onDelete: Restrict)
+  criadoEm     DateTime          @default(now())
+  atualizadoEm DateTime          @updatedAt
+
+  revisoes Revisao[]
+
+  @@index([vendedorId, atualizadoEm])
+  @@map("orcamentos")
+}
+
+/// Revisão do orçamento. A configuração (escolhas do vendedor) fica em JSONB.
+model Revisao {
+  id            String    @id @default(uuid()) @db.Uuid
+  orcamentoId   String    @db.Uuid
+  orcamento     Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
+  numero        Int
+  configuracao  Json
+  schemaVersion Int       @default(1)
+  salvoEm       DateTime  @updatedAt
+  criadoEm      DateTime  @default(now())
+  emissao       Emissao?
+
+  @@unique([orcamentoId, numero])
+  @@map("revisoes")
+}
+
+/// Conjunto padrão (kit): itens pré-selecionados com quantidade e respostas padrão.
+model Kit {
+  id           String      @id @default(uuid()) @db.Uuid
+  nome         String
+  descricao    String?
+  categoriaId  String      @db.Uuid
+  categoria    Categoria   @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+  imagemId     String?     @db.Uuid
+  imagem       Imagem?     @relation(fields: [imagemId], references: [id], onDelete: SetNull)
+  ordem        Int         @default(0)
+  ativo        Boolean     @default(true)
+  isDemo       Boolean     @default(false)
+  criadoEm     DateTime    @default(now())
+  atualizadoEm DateTime    @updatedAt
+
+  itens ItemDeKit[]
+
+  @@index([categoriaId, ordem])
+  @@map("kits")
+}
+
+model ItemDeKit {
+  id            String      @id @default(uuid()) @db.Uuid
+  kitId         String      @db.Uuid
+  kit           Kit         @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  equipamentoId String      @db.Uuid
+  equipamento   Equipamento @relation(fields: [equipamentoId], references: [id], onDelete: Cascade)
+  modeloId      String?     @db.Uuid
+  modelo        Modelo?     @relation(fields: [modeloId], references: [id], onDelete: SetNull)
+  quantidade    Int         @default(1)
+  respostas     Json        @default("{}")
+  ordem         Int         @default(0)
+
+  @@index([kitId, ordem])
+  @@map("itens_de_kit")
+}
+
+/// Imagem com áreas clicáveis (hotspots), ligada a um sistema (categoria) ou a um equipamento.
+model ImagemInterativa {
+  id            String       @id @default(uuid()) @db.Uuid
+  nome          String
+  imagemId      String       @db.Uuid
+  imagem        Imagem       @relation(fields: [imagemId], references: [id], onDelete: Restrict)
+  categoriaId   String?      @db.Uuid
+  categoria     Categoria?   @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  equipamentoId String?      @db.Uuid
+  equipamento   Equipamento? @relation(fields: [equipamentoId], references: [id], onDelete: Cascade)
+  ativo         Boolean      @default(true)
+  isDemo        Boolean      @default(false)
+  criadoEm      DateTime     @default(now())
+  atualizadoEm  DateTime     @updatedAt
+
+  hotspots Hotspot[]
+
+  @@map("imagens_interativas")
+}
+
+enum FormaDeHotspot {
+  RETANGULO
+  ELIPSE
+}
+
+enum AlvoDeHotspot {
+  EQUIPAMENTO
+  MODELO
+  KIT
+  PERGUNTA
+  OPCAO
+}
+
+model Hotspot {
+  id                 String           @id @default(uuid()) @db.Uuid
+  imagemInterativaId String           @db.Uuid
+  imagemInterativa   ImagemInterativa @relation(fields: [imagemInterativaId], references: [id], onDelete: Cascade)
+  rotulo             String
+  forma              FormaDeHotspot   @default(RETANGULO)
+  /// Posição e tamanho relativos à imagem (0 a 1).
+  x                  Float
+  y                  Float
+  largura            Float
+  altura             Float
+  alvoTipo           AlvoDeHotspot
+  /// id do equipamento, modelo ou kit; chave da pergunta para PERGUNTA/OPCAO.
+  alvoId             String
+  /// Valor da opção (OPCAO).
+  alvoValor          String?
+  ordem              Int              @default(0)
+
+  @@index([imagemInterativaId, ordem])
+  @@map("hotspots")
+}
+
+enum TipoDeDerivacao {
+  NENHUM
+  INDIVIDUAL
+  COLETIVO
+}
+
+/// Tipo de painel (monitoramento, controle, ambos…), cadastrado pela equipe.
+model TipoDePainel {
+  id           String   @id @default(uuid()) @db.Uuid
+  nome         String   @unique
+  descricao    String?
+  ordem        Int      @default(0)
+  ativo        Boolean  @default(true)
+  isDemo       Boolean  @default(false)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  regras Regra[]
+  modelosDeTexto ModeloDeTexto[]
+
+  @@map("tipos_de_painel")
+}
+
+/// Função de controle (temperatura, umidade, temporização…), usada por grupos e saídas funcionais.
+model FuncaoDeControle {
+  id           String   @id @default(uuid()) @db.Uuid
+  codigo       String   @unique
+  nome         String
+  descricao    String?
+  ordem        Int      @default(0)
+  ativo        Boolean  @default(true)
+  isDemo       Boolean  @default(false)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  saidas SaidaFuncional[] @relation("FuncoesDaSaida")
+
+  @@map("funcoes_de_controle")
+}
+
+/// Categoria do catálogo central (contatores, cabos, sensores…).
+model CategoriaDeComponente {
+  id           String           @id @default(uuid()) @db.Uuid
+  nome         String           @unique
+  ordem        Int              @default(0)
+  ativo        Boolean          @default(true)
+  criadoEm     DateTime         @default(now())
+  atualizadoEm DateTime         @updatedAt
+  itens        ItemDeCatalogo[]
+
+  @@map("categorias_de_componente")
+}
+
+/// Catálogo central: um cadastro único para componente, sensor, controlador, cartão e acessório.
+model ItemDeCatalogo {
+  id               String                 @id @default(uuid()) @db.Uuid
+  codigo           String                 @unique
+  codigoFabricante String?
+  descricao        String
+  fabricante       String?
+  modelo           String?
+  unidade          String                 @default("pç")
+  /// Aceita quantidade fracionada (m, kg). Senão, sempre arredonda para cima.
+  fracionavel      Boolean                @default(false)
+  fornecedor       String?
+  /// Grupo comercial para descontos e impostos (Fase 09).
+  grupoComercial   GrupoComercial         @default(MATERIAL)
+  atributos        Json                   @default("{}")
+  categoriaId      String?                @db.Uuid
+  categoria        CategoriaDeComponente? @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  ativo            Boolean                @default(true)
+  isDemo           Boolean                @default(false)
+  criadoEm         DateTime               @default(now())
+  atualizadoEm     DateTime               @updatedAt
+
+  modelos     Modelo[]
+  controlador Controlador?
+  cartao      CartaoDeExpansao?
+  precos      PrecoDoItem[]
+
+  @@index([descricao])
+  @@map("itens_de_catalogo")
+}
+
+/// Tipo de recurso de automação (DI, DO, AI, AO, SP, RS485…), cadastrável.
+model TipoDeRecurso {
+  id           String   @id @default(uuid()) @db.Uuid
+  codigo       String   @unique
+  nome         String
+  descricao    String?
+  /// Ponto físico de I/O.
+  fisico       Boolean  @default(true)
+  ordem        Int      @default(0)
+  ativo        Boolean  @default(true)
+  isDemo       Boolean  @default(false)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  controladores RecursoDoControlador[]
+  cartoes       RecursoDoCartao[]
+
+  @@map("tipos_de_recurso")
+}
+
+enum DonoDeRegra {
+  EQUIPAMENTO
+  MODELO
+  TIPO_DE_PAINEL
+  CONTROLADOR
+  PROJETO
+}
+
+enum EstagioDeRegra {
+  RECURSO
+  MATERIAL
+  SERVICO
+}
+
+/// Regra única para recursos e materiais: condição + base de cálculo + efeitos + prioridade (§20).
+model Regra {
+  id             String         @id @default(uuid()) @db.Uuid
+  codigo         String         @unique
+  nome           String
+  descricao      String?
+  donoTipo       DonoDeRegra
+  equipamentoId  String?        @db.Uuid
+  equipamento    Equipamento?   @relation(fields: [equipamentoId], references: [id], onDelete: Cascade)
+  modeloId       String?        @db.Uuid
+  modelo         Modelo?        @relation(fields: [modeloId], references: [id], onDelete: Cascade)
+  tipoDePainelId String?        @db.Uuid
+  tipoDePainel   TipoDePainel?  @relation(fields: [tipoDePainelId], references: [id], onDelete: Cascade)
+  controladorId  String?        @db.Uuid
+  controlador    Controlador?   @relation(fields: [controladorId], references: [id], onDelete: Cascade)
+  estagio        EstagioDeRegra
+  /// por_equipamento, por_acionamento, por_painel… (BASES_DE_CALCULO do motor).
+  base           String
+  condicao       Json?
+  prioridade     Int            @default(100)
+  permiteRemocao Boolean        @default(false)
+  /// Lista de efeitos (JSON validado pelo schema da aplicação).
+  efeitos        Json           @default("[]")
+  ativo          Boolean        @default(true)
+  isDemo         Boolean        @default(false)
+  criadoEm       DateTime       @default(now())
+  atualizadoEm   DateTime       @updatedAt
+
+  @@index([donoTipo])
+  @@map("regras")
+}
+
+/* ───────────── Fase 07: controladores ───────────── */
+
+enum TipoDeControlador {
+  CONVENCIONAL
+  DIGITAL
+  CLP
+  IRRIGACAO
+  IHM
+}
+
+/// Extensão 1:1 de um item do catálogo com as capacidades do controlador.
+model Controlador {
+  id           String            @id @default(uuid()) @db.Uuid
+  itemId       String            @unique @db.Uuid
+  item         ItemDeCatalogo    @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  tipo         TipoDeControlador
+  alimentacao  String?
+  /// Tensões de alimentação aceitas (V). Vazio = não cadastrado.
+  tensoes      Int[]
+  protocolos   String[]
+  observacoes  String?
+  /// Expansão (Fase 08).
+  barramento           String?
+  maxModulos           Int?
+  /// Consumo máximo do barramento (mA).
+  consumoMaxBarramento Int?
+  ativo        Boolean           @default(true)
+  isDemo       Boolean           @default(false)
+  criadoEm     DateTime          @default(now())
+  atualizadoEm DateTime          @updatedAt
+
+  cartoesCompativeis CartaoDeExpansao[]     @relation("CartoesCompativeis")
+  recursos           RecursoDoControlador[]
+  saidas             SaidaFuncional[]
+  modelosCompativeis Modelo[]               @relation("ModelosCompativeis")
+  regras             Regra[]
+  modelosDeTexto ModeloDeTexto[]
+
+  @@map("controladores")
+}
+
+/// Recursos integrados do controlador (DI, DO, AI, AO, SP…).
+model RecursoDoControlador {
+  controladorId String        @db.Uuid
+  controlador   Controlador   @relation(fields: [controladorId], references: [id], onDelete: Cascade)
+  tipoRecursoId String        @db.Uuid
+  tipoRecurso   TipoDeRecurso @relation(fields: [tipoRecursoId], references: [id], onDelete: Cascade)
+  quantidade    Int
+
+  @@id([controladorId, tipoRecursoId])
+  @@map("recursos_do_controlador")
+}
+
+/// Saída funcional (SP1, SP2…) e as funções de controle que ela suporta.
+model SaidaFuncional {
+  id            String             @id @default(uuid()) @db.Uuid
+  controladorId String             @db.Uuid
+  controlador   Controlador        @relation(fields: [controladorId], references: [id], onDelete: Cascade)
+  codigo        String
+  descricao     String?
+  ordem         Int                @default(0)
+  funcoes       FuncaoDeControle[] @relation("FuncoesDaSaida")
+
+  @@unique([controladorId, codigo])
+  @@map("saidas_funcionais")
+}
+
+/* ───────────── Fase 08: CLPs, cartões e configurações ───────────── */
+
+/// Cartão de expansão: extensão 1:1 de um item do catálogo.
+model CartaoDeExpansao {
+  id           String         @id @default(uuid()) @db.Uuid
+  itemId       String         @unique @db.Uuid
+  item         ItemDeCatalogo @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  barramento   String?
+  /// Consumo no barramento (mA).
+  consumo      Int?
+  /// Tipo de sinal ou de saída (relé, transistor, 4–20 mA…), como na ficha técnica.
+  tipoDeSinal  String?
+  observacoes  String?
+  ativo        Boolean        @default(true)
+  isDemo       Boolean        @default(false)
+  criadoEm     DateTime       @default(now())
+  atualizadoEm DateTime       @updatedAt
+
+  recursos      RecursoDoCartao[]
+  controladores Controlador[]     @relation("CartoesCompativeis")
+
+  @@map("cartoes_de_expansao")
+}
+
+model RecursoDoCartao {
+  cartaoId      String           @db.Uuid
+  cartao        CartaoDeExpansao @relation(fields: [cartaoId], references: [id], onDelete: Cascade)
+  tipoRecursoId String           @db.Uuid
+  tipoRecurso   TipoDeRecurso    @relation(fields: [tipoRecursoId], references: [id], onDelete: Cascade)
+  quantidade    Int
+
+  @@id([cartaoId, tipoRecursoId])
+  @@map("recursos_do_cartao")
+}
+
+/* ───────────── Fase 09: precificação ───────────── */
+
+enum GrupoComercial {
+  MATERIAL
+  SOFTWARE
+}
+
+/// Venda fixa (usa o preço de venda) ou custo + regra comercial (markup ou margem). Nunca os dois.
+enum ModoDePreco {
+  VENDA_FIXA
+  CUSTO_REGRA
+}
+
+/// Histórico de preços do item. O vigente é o de maior "vigenteDesde" que já começou.
+model PrecoDoItem {
+  id            String         @id @default(uuid()) @db.Uuid
+  itemId        String         @db.Uuid
+  item          ItemDeCatalogo @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  custo         Decimal?       @db.Decimal(14, 4)
+  modo          ModoDePreco
+  venda         Decimal?       @db.Decimal(14, 4)
+  vigenteDesde  DateTime
+  atualizadoPor String?
+  observacao    String?
+  isDemo        Boolean        @default(false)
+  criadoEm      DateTime       @default(now())
+
+  @@index([itemId, vigenteDesde])
+  @@map("precos_dos_itens")
+}
+
+/// Serviço do catálogo, incluído por regra (estágio de serviços) ou à mão no orçamento.
+model Servico {
+  id           String   @id @default(uuid()) @db.Uuid
+  codigo       String   @unique
+  descricao    String
+  unidade      String   @default("h")
+  fracionavel  Boolean  @default(true)
+  /// Valor de venda (sempre venda fixa). Null = sem preço.
+  valor        Decimal? @db.Decimal(14, 4)
+  custo        Decimal? @db.Decimal(14, 4)
+  ativo        Boolean  @default(true)
+  isDemo       Boolean  @default(false)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@map("servicos")
+}
+
+/* ───────────── Fase 10: documentos ───────────── */
+
+/// Trecho do descritivo técnico com variáveis e condição de uso.
+model ModeloDeTexto {
+  id             String         @id @default(uuid()) @db.Uuid
+  /// objeto, equipamentos, paineis, automacao, servicos, observacoes (SECOES_DO_DESCRITIVO do motor).
+  secao          String
+  donoTipo       DonoDeRegra
+  equipamentoId  String?        @db.Uuid
+  equipamento    Equipamento?   @relation(fields: [equipamentoId], references: [id], onDelete: Cascade)
+  modeloId       String?        @db.Uuid
+  modelo         Modelo?        @relation(fields: [modeloId], references: [id], onDelete: Cascade)
+  tipoDePainelId String?        @db.Uuid
+  tipoDePainel   TipoDePainel?  @relation(fields: [tipoDePainelId], references: [id], onDelete: Cascade)
+  controladorId  String?        @db.Uuid
+  controlador    Controlador?   @relation(fields: [controladorId], references: [id], onDelete: Cascade)
+  texto          String
+  condicao       Json?
+  ordem          Int            @default(0)
+  ativo          Boolean        @default(true)
+  isDemo         Boolean        @default(false)
+  criadoEm       DateTime       @default(now())
+  atualizadoEm   DateTime       @updatedAt
+
+  @@index([secao, ordem])
+  @@map("modelos_de_texto")
+}
+
+/// Emissão de uma revisão: congelada, nunca recalculada.
+model Emissao {
+  id           String   @id @default(uuid()) @db.Uuid
+  revisaoId    String   @unique @db.Uuid
+  revisao      Revisao  @relation(fields: [revisaoId], references: [id], onDelete: Cascade)
+  emitidoEm    DateTime @default(now())
+  emitidoPorId String?  @db.Uuid
+  emitidoPor   Usuario? @relation(fields: [emitidoPorId], references: [id], onDelete: SetNull)
+  /// Configuração, snapshot da biblioteca e resultado calculado no momento da emissão.
+  configuracao Json
+  snapshot     Json
+  resultado    Json
+
+  @@map("emissoes")
 }

@@ -9,3 +9,4 @@ coverage
 *.tsbuildinfo
 .netlify
 .DS_Store
+apps/web/.uploads

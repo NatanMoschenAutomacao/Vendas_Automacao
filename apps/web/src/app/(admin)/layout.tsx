@@ -9,7 +9,7 @@ export default async function LayoutAdmin({ children }: LayoutProps<"/">) {
   return (
     <>
       <BarraSuperior usuario={usuario} />
-      <div className="mx-auto flex w-full max-w-7xl flex-1 gap-8 px-4 py-10 sm:px-6">
+      <div className="mx-auto flex w-full max-w-[110rem] flex-1 gap-8 px-4 py-10 sm:px-6">
         <aside className="hidden w-64 shrink-0 lg:block">
           <nav className="sticky top-24 flex flex-col gap-0.5">
             <LinkNav href="/admin" exato>

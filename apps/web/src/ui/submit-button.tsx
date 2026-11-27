@@ -6,12 +6,16 @@ export function BotaoEnviar({
   children,
   variante,
   tamanho,
+  pendente,
 }: {
   children: React.ReactNode;
   variante?: "primario" | "secundario" | "fantasma" | "perigo";
   tamanho?: "sm" | "md";
+  /** Use quando o formulário é enviado por onSubmit (useFormulario). */
+  pendente?: boolean;
 }) {
-  const { pending } = useFormStatus();
+  const status = useFormStatus();
+  const pending = pendente ?? status.pending;
   return (
     <Button type="submit" disabled={pending} variante={variante} tamanho={tamanho}>
       {pending ? "Aguarde…" : children}
